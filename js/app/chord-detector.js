@@ -52,11 +52,13 @@ const DEFAULT_DETECTION_SETTINGS = {
   historyWindowMs: 900,   // ventana de 0.9s de notas recientes
   minNotesForChord: 3,    // mín. notas distintas para considerar acorde
   maxDeviationCents: 35,  // filtrar notas muy desafinadas
+  noteHoldTimeMs: 1000,    // tiempo de retención de nota en pantalla
 };
 
 let NOTE_HISTORY_WINDOW_MS = DEFAULT_DETECTION_SETTINGS.historyWindowMs;
 let MIN_NOTES_FOR_CHORD = DEFAULT_DETECTION_SETTINGS.minNotesForChord;
 let MAX_DEVIATION_CENTS = DEFAULT_DETECTION_SETTINGS.maxDeviationCents;
+let NOTE_HOLD_TIME_MS = DEFAULT_DETECTION_SETTINGS.noteHoldTimeMs;
 
 // Guardamos notas detectadas recientemente: { pc, time }
 let recentNotes = [];
@@ -157,6 +159,8 @@ let timeDomainBuffer = null;
 let lastAnalysisTime = 0;
 let analysisInterval = 50; // ms
 
+let lastNoteTimestamp = 0;
+
 // ===================== UI Elements =====================
 const toggleButton = document.getElementById("toggleButton");
 const statusDot = document.getElementById("statusDot");
@@ -176,6 +180,7 @@ const saveIntervalBtn = document.getElementById("saveIntervalBtn");
 const historyWindowInput = document.getElementById("historyWindowInput");
 const minNotesForChordInput = document.getElementById("minNotesForChordInput");
 const maxDeviationCentsInput = document.getElementById("maxDeviationCentsInput");
+const noteHoldTimeInput = document.getElementById("noteHoldTimeInput");
 const saveDetectionSettingsBtn = document.getElementById("saveDetectionSettingsBtn");
 const resetDetectionSettingsBtn = document.getElementById("resetDetectionSettingsBtn");
 
@@ -249,6 +254,7 @@ function applyDetectionSettings(settings) {
   NOTE_HISTORY_WINDOW_MS = settings.historyWindowMs;
   MIN_NOTES_FOR_CHORD = settings.minNotesForChord;
   MAX_DEVIATION_CENTS = settings.maxDeviationCents;
+  NOTE_HOLD_TIME_MS = settings.noteHoldTimeMs;
 }
 
 function reflectDetectionSettingsInInputs(settings) {
@@ -260,6 +266,9 @@ function reflectDetectionSettingsInInputs(settings) {
   }
   if (maxDeviationCentsInput) {
     maxDeviationCentsInput.value = settings.maxDeviationCents;
+  }
+  if (noteHoldTimeInput) {
+    noteHoldTimeInput.value = settings.noteHoldTimeMs;
   }
 }
 
@@ -278,6 +287,9 @@ function loadDetectionSettingsFromStorage() {
       if (typeof parsed.maxDeviationCents === "number" && parsed.maxDeviationCents > 0) {
         settings.maxDeviationCents = parsed.maxDeviationCents;
       }
+      if (typeof parsed.noteHoldTimeMs === "number" && parsed.noteHoldTimeMs >= 0) {
+        settings.noteHoldTimeMs = parsed.noteHoldTimeMs;
+      }
     } catch (e) {
       console.warn("Could not parse detection settings from storage:", e);
     }
@@ -285,7 +297,7 @@ function loadDetectionSettingsFromStorage() {
   applyDetectionSettings(settings);
   reflectDetectionSettingsInInputs(settings);
   logMessage(
-    `Ajustes avanzados cargados (ventana=${settings.historyWindowMs}ms, mín notas=${settings.minNotesForChord}, max desv=${settings.maxDeviationCents}cents)`
+    `Ajustes avanzados cargados (ventana=${settings.historyWindowMs}ms, mín notas=${settings.minNotesForChord}, max desv=${settings.maxDeviationCents}cents, hold=${settings.noteHoldTimeMs}ms)`
   );
 }
 
@@ -304,6 +316,10 @@ function readDetectionSettingsFromInputs() {
     const v = parseInt(maxDeviationCentsInput.value, 10);
     if (!isNaN(v) && v > 0) settings.maxDeviationCents = v;
   }
+  if (noteHoldTimeInput) {
+    const v = parseInt(noteHoldTimeInput.value, 10);
+    if (!isNaN(v) && v >= 0) settings.noteHoldTimeMs = v;
+  }
 
   return settings;
 }
@@ -313,7 +329,7 @@ function saveDetectionSettingsFromInputs() {
   localStorage.setItem(DETECTION_SETTINGS_KEY, JSON.stringify(settings));
   applyDetectionSettings(settings);
   logMessage(
-    `Ajustes avanzados guardados (ventana=${settings.historyWindowMs}ms, mín notas=${settings.minNotesForChord}, max desv=${settings.maxDeviationCents}cents)`
+    `Ajustes avanzados guardados (ventana=${settings.historyWindowMs}ms, mín notas=${settings.minNotesForChord}, max desv=${settings.maxDeviationCents}cents, hold=${settings.noteHoldTimeMs}ms)`
   );
 }
 
@@ -519,6 +535,9 @@ function analysisLoop() {
 
     const freq = autoCorrelate(timeDomainBuffer, audioContext.sampleRate);
     if (freq) {
+      // hemos detectado nota en este instante
+      lastNoteTimestamp = now;
+
       const noteInfo = frequencyToNote(freq);
       noteDisplay.textContent = `${noteInfo.name}`;
       const centsStr = noteInfo.cents.toFixed(1);
@@ -559,11 +578,16 @@ function analysisLoop() {
       }
 
     } else {
-      updateUIForSilence();
-      if (chordFreqDisplay) chordFreqDisplay.textContent = "";
-      // >>> NUEVO: si llevamos rato en silencio, vaciar historial
-      resetNoteHistoryIfIdle(now);
-      lastLoggedNoteMidi = null; // Reset para que vuelva a loguear si suena la misma nota
+      // No hemos detectado nota en este frame.
+      // Solo limpiamos la UI si ha pasado más tiempo que NOTE_HOLD_TIME_MS
+      // desde la última nota reconocida.
+      if (!lastNoteTimestamp || now - lastNoteTimestamp > NOTE_HOLD_TIME_MS) {
+        updateUIForSilence();
+        if (chordFreqDisplay) chordFreqDisplay.textContent = "";
+        // >>> NUEVO: si llevamos rato en silencio, vaciar historial
+        resetNoteHistoryIfIdle(now);
+        lastLoggedNoteMidi = null; // Reset para que vuelva a loguear si suena la misma nota
+      }
     }
 
     // Detección de acorde usando el nuevo motor basado en historial
