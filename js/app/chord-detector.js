@@ -1,0 +1,428 @@
+    // ===================== Configuración básica =====================
+    const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const NOTE_NAMES_LATIN = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
+
+    let currentNotation = "latin";
+
+    function getNoteName(midiOrPc) {
+        const pc = midiOrPc % 12;
+        return currentNotation === "latin" ? NOTE_NAMES_LATIN[pc] : NOTE_NAMES[pc];
+    }
+
+    // Afinación estándar en MIDI: E2, A2, D3, G3, B3, E4
+    const STRING_TUNINGS = [
+      { name: "6ª (Mi/E)", midi: 40 },
+      { name: "5ª (La/A)", midi: 45 },
+      { name: "4ª (Re/D)", midi: 50 },
+      { name: "3ª (Sol/G)", midi: 55 },
+      { name: "2ª (Si/B)", midi: 59 },
+      { name: "1ª (Mi/E)", midi: 64 },
+    ];
+
+    const MAX_FRET = 20;
+
+    const CHORD_TYPES = [
+      { key: "chord_major", short: "", intervals: [0, 4, 7] },
+      { key: "chord_minor", short: "m", intervals: [0, 3, 7] },
+      { key: "chord_dom7", short: "7", intervals: [0, 4, 7, 10] },
+      { key: "chord_maj7", short: "maj7", intervals: [0, 4, 7, 11] },
+      { key: "chord_m7", short: "m7", intervals: [0, 3, 7, 10] },
+      { key: "chord_dim", short: "dim", intervals: [0, 3, 6] },
+      { key: "chord_aug", short: "aug", intervals: [0, 4, 8] },
+      { key: "chord_sus2", short: "sus2", intervals: [0, 2, 7] },
+      { key: "chord_sus4", short: "sus4", intervals: [0, 5, 7] },
+    ];
+
+    // ===================== Estado de audio =====================
+    let audioContext = null;
+    let analyser = null;
+    let mediaStream = null;
+    let running = false;
+
+    const timeDomainBufferSize = 2048;
+    let timeDomainBuffer = null;
+
+    // ===================== Elementos de la UI =====================
+    const toggleButton = document.getElementById("toggleButton");
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    const chordDisplay = document.getElementById("chordDisplay");
+    const chordNotes = document.getElementById("chordNotes");
+    const noteDisplay = document.getElementById("noteDisplay");
+    const noteDetail = document.getElementById("noteDetail");
+    const stringFretDisplay = document.getElementById("stringFretDisplay");
+    const stringFretDetail = document.getElementById("stringFretDetail");
+    const errorsEl = document.getElementById("errors");
+    const langSelect = document.getElementById("langSelect");
+
+    const waveCanvas = document.getElementById("waveCanvas");
+    const waveCtx = waveCanvas.getContext("2d");
+
+    // ===================== Utilidades =====================
+    function log2(x) {
+      return Math.log(x) / Math.LN2;
+    }
+
+    function frequencyToNote(freq) {
+      // Convertir frecuencia a nota MIDI aproximada
+      const midi = Math.round(69 + 12 * log2(freq / 440));
+      const pc = (midi % 12 + 12) % 12;
+      const name = getNoteName(pc);
+      const exactFreq = 440 * Math.pow(2, (midi - 69) / 12);
+      const cents = 1200 * log2(freq / exactFreq);
+      return { midi, name, exactFreq, cents, freq };
+    }
+
+    function guessStringAndFret(midi) {
+      let best = null;
+      for (const s of STRING_TUNINGS) {
+        for (let fret = 0; fret <= MAX_FRET; fret++) {
+          const noteMidi = s.midi + fret;
+          const diff = Math.abs(noteMidi - midi);
+          if (best === null || diff < best.diff) {
+            best = { string: s, fret, diff };
+          }
+        }
+      }
+      return best;
+    }
+
+    // ===================== Autocorrelación para detectar pitch =====================
+    function autoCorrelate(buffer, sampleRate) {
+      const size = buffer.length;
+
+      // Calcular RMS para filtrar silencio/ruido muy bajo
+      let sumSquares = 0;
+      for (let i = 0; i < size; i++) {
+        const v = buffer[i];
+        sumSquares += v * v;
+      }
+      const rms = Math.sqrt(sumSquares / size);
+      if (rms < 0.01) return null; // demasiado silencioso
+
+      let bestOffset = -1;
+      let bestCorrelation = 0;
+
+      // Probamos distintos offsets (periodos)
+      const minOffset = 20;         // ~2 kHz
+      const maxOffset = size / 2;   // límite inferior en frecuencia
+
+      for (let offset = minOffset; offset < maxOffset; offset++) {
+        let correlation = 0;
+        for (let i = 0; i < maxOffset; i++) {
+          correlation += buffer[i] * buffer[i + offset];
+        }
+        correlation = correlation / maxOffset;
+
+        if (correlation > bestCorrelation) {
+          bestCorrelation = correlation;
+          bestOffset = offset;
+        }
+      }
+
+      if (bestOffset === -1) return null;
+
+      const frequency = sampleRate / bestOffset;
+      // Filtramos frecuencias fuera del rango típico de guitarra (aprox)
+      if (frequency < 70 || frequency > 1500) return null;
+
+      return frequency;
+    }
+
+    // ===================== Detección de acorde (muy aproximada) =====================
+    function detectChordFromSpectrum() {
+      if (!analyser || !audioContext) return null;
+
+      const binCount = analyser.frequencyBinCount;
+      const spectrum = new Uint8Array(binCount);
+      analyser.getByteFrequencyData(spectrum);
+
+      // Cogemos los picos más altos
+      const bins = [];
+      for (let i = 0; i < binCount; i++) {
+        bins.push({ index: i, value: spectrum[i] });
+      }
+      bins.sort((a, b) => b.value - a.value);
+
+      const noteClassesSet = new Set();
+      const maxPeaks = 12;
+      const amplitudeThreshold = 80; // 0-255
+
+      for (let i = 0; i < maxPeaks && i < bins.length; i++) {
+        const { index, value } = bins[i];
+        if (value < amplitudeThreshold) break;
+
+        const freq = (index * audioContext.sampleRate) / analyser.fftSize;
+        if (freq < 80 || freq > 2000) continue;
+
+        const midi = Math.round(69 + 12 * log2(freq / 440));
+        const noteClass = (midi % 12 + 12) % 12;
+        noteClassesSet.add(noteClass);
+      }
+
+      const noteClasses = Array.from(noteClassesSet);
+      if (noteClasses.length < 3) return null;
+
+      // Intentamos encajar el conjunto de notas con algún tipo de acorde
+      let best = null;
+
+      for (const rootClass of noteClasses) {
+        for (const type of CHORD_TYPES) {
+          const expected = type.intervals.map(iv => (rootClass + iv) % 12);
+          let present = 0;
+          for (const n of expected) {
+            if (noteClasses.includes(n)) present++;
+          }
+
+          if (present >= Math.max(3, expected.length - 1)) {
+            const coverage = present / expected.length;
+            const extras = noteClasses.length - present;
+            const quality = coverage - extras * 0.05;
+
+            if (!best || quality > best.quality) {
+              best = {
+                rootClass,
+                type,
+                quality,
+                noteClasses,
+                expected
+              };
+            }
+          }
+        }
+      }
+
+      if (!best) return null;
+
+      const rootName = getNoteName(best.rootClass);
+      const label = rootName + best.type.short;
+      const typeName = window.t ? window.t(best.type.key) : best.type.key;
+
+      // Notas presentes (únicamente las que encajan con el acorde)
+      const presentNotes = best.expected
+        .filter(n => best.noteClasses.includes(n))
+        .map(n => getNoteName(n));
+
+      return {
+        label,
+        description: `${rootName} ${typeName.toLowerCase()}`,
+        presentNotes,
+        allNotes: best.noteClasses.map(n => getNoteName(n))
+      };
+    }
+
+    // ===================== Dibujo de forma de onda =====================
+    function drawWaveform(buffer) {
+      if (!waveCtx || !buffer) return;
+
+      const width = waveCanvas.width;
+      const height = waveCanvas.height;
+
+      waveCtx.clearRect(0, 0, width, height);
+
+      waveCtx.beginPath();
+      waveCtx.moveTo(0, height / 2);
+
+      const step = buffer.length / width;
+      for (let x = 0; x < width; x++) {
+        const idx = Math.floor(x * step);
+        const v = buffer[idx] || 0;
+        const y = height / 2 + v * (height / 2) * 0.9;
+        waveCtx.lineTo(x, y);
+      }
+
+      waveCtx.lineWidth = 1.2;
+      waveCtx.strokeStyle = "#9ca3af";
+      waveCtx.stroke();
+    }
+
+    // ===================== Loop de análisis =====================
+    function updateUIForSilence() {
+      noteDisplay.textContent = "—";
+      noteDetail.textContent = window.t ? window.t("msg_no_clear_note") : "No clear note";
+      stringFretDisplay.textContent = "—";
+      stringFretDetail.textContent = "";
+      // No borramos el acorde: así puedes ver el último que detectó.
+    }
+
+    function analysisLoop() {
+      if (!running || !analyser || !audioContext) return;
+
+      if (!timeDomainBuffer || timeDomainBuffer.length !== analyser.fftSize) {
+        timeDomainBuffer = new Float32Array(analyser.fftSize);
+      }
+
+      analyser.getFloatTimeDomainData(timeDomainBuffer);
+
+      const freq = autoCorrelate(timeDomainBuffer, audioContext.sampleRate);
+      if (freq) {
+        const noteInfo = frequencyToNote(freq);
+        noteDisplay.textContent = `${noteInfo.name}`;
+        const centsStr = noteInfo.cents.toFixed(1);
+        const msgDeviation = window.t ? window.t("msg_deviation") : "Hz · deviation";
+        const msgCents = window.t ? window.t("msg_cents") : "cents";
+        noteDetail.textContent = `${freq.toFixed(1)} ${msgDeviation} ${centsStr} ${msgCents}`;
+
+        const sf = guessStringAndFret(noteInfo.midi);
+        if (sf) {
+          const msgApprox = window.t ? window.t("msg_approx") : "(approx)";
+          const approx = sf.diff > 0.4 ? ` ${msgApprox}` : "";
+          stringFretDisplay.textContent = `${sf.string.name}, traste ${sf.fret}${approx}`;
+          const noteName = getNoteName((sf.string.midi + sf.fret) % 12);
+          const msgSuggested = window.t ? window.t("msg_suggested_note") : "Note at suggested position:";
+          stringFretDetail.textContent = `${msgSuggested} ${noteName}`;
+        } else {
+          stringFretDisplay.textContent = "—";
+          stringFretDetail.textContent = "";
+        }
+      } else {
+        updateUIForSilence();
+      }
+
+      // Detección de acorde (muy básica)
+      const chord = detectChordFromSpectrum();
+      if (chord) {
+        chordDisplay.textContent = chord.label;
+        const msgDetected = window.t ? window.t("msg_detected_notes") : "detected notes:";
+        chordNotes.textContent =
+          `${chord.description} · ${msgDetected} ${chord.allNotes.join(", ")}`;
+      }
+
+      drawWaveform(timeDomainBuffer);
+
+      requestAnimationFrame(analysisLoop);
+    }
+
+    // ===================== Control de audio (start/stop) =====================
+    async function startListening() {
+      if (running) return;
+      errorsEl.textContent = "";
+
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      } catch (e) {
+        errorsEl.textContent = window.t ? window.t("err_no_audiocontext") : "AudioContext not supported";
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+
+        mediaStream = stream;
+        const source = audioContext.createMediaStreamSource(stream);
+
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = timeDomainBufferSize * 2; // 4096
+        analyser.smoothingTimeConstant = 0.85;
+
+        source.connect(analyser);
+
+        running = true;
+        toggleButton.textContent = window.t ? window.t("btn_stop") : "Stop Listening";
+        statusDot.classList.remove("idle");
+        statusDot.classList.add("listening");
+        statusText.textContent = window.t ? window.t("status_listening") : "Listening";
+
+        requestAnimationFrame(analysisLoop);
+      } catch (err) {
+        console.error(err);
+        const msgErr = window.t ? window.t("err_mic_access") : "Mic access error:";
+        errorsEl.textContent = `${msgErr} ${err.message}`;
+        if (audioContext) {
+          audioContext.close();
+          audioContext = null;
+        }
+        analyser = null;
+        mediaStream = null;
+        running = false;
+      }
+    }
+
+    function stopListening() {
+      if (!running) return;
+      running = false;
+
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      }
+
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+
+      analyser = null;
+      toggleButton.textContent = window.t ? window.t("btn_start") : "Start Listening";
+      statusDot.classList.remove("listening");
+      statusDot.classList.add("idle");
+      statusText.textContent = window.t ? window.t("status_stopped") : "Stopped";
+    }
+
+    toggleButton.addEventListener("click", () => {
+      if (running) {
+        stopListening();
+      } else {
+        startListening();
+      }
+    });
+
+    // ===================== Inicialización =====================
+    document.addEventListener("DOMContentLoaded", () => {
+        // Set translation prefix for this page
+        if (window.setTranslationPrefix) {
+            window.setTranslationPrefix('chord-detector');
+        }
+
+        // Detect browser language
+        const browserLang = navigator.language || navigator.userLanguage || 'en';
+        const userLang = browserLang.startsWith('es') ? 'es' : 'en';
+        
+        if (langSelect) {
+            langSelect.value = userLang;
+            langSelect.addEventListener("change", (e) => {
+                const newLang = e.target.value;
+                
+                // Auto-switch notation
+                if (newLang === 'en') {
+                    currentNotation = 'anglo';
+                } else if (newLang === 'es') {
+                    currentNotation = 'latin';
+                }
+
+                if (window.loadTranslations) {
+                    window.loadTranslations(newLang, () => {
+                        // Update UI text that isn't handled by data-i18n automatically
+                        if (running) {
+                            toggleButton.textContent = window.t("btn_stop");
+                            statusText.textContent = window.t("status_listening");
+                        } else {
+                            toggleButton.textContent = window.t("btn_start");
+                            statusText.textContent = window.t("status_stopped");
+                        }
+                        updateUIForSilence();
+                    });
+                }
+            });
+        }
+
+        // Set initial notation
+        if (userLang === 'en') {
+            currentNotation = 'anglo';
+        } else {
+            currentNotation = 'latin';
+        }
+
+        // Load translations
+        if (window.loadTranslations) {
+            window.loadTranslations(userLang, () => {
+                updateUIForSilence();
+            });
+        }
+    });
