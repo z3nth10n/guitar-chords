@@ -104,6 +104,14 @@
                      style="width:100%; padding:4px; border-radius:4px; border:1px solid var(--border);" />
             </label>
 
+            <label style="font-size: 13px;">
+              Umbral de volumen (RMS)
+              <input type="number" id="minVolumeRmsInput"
+                     min="0.001" max="0.1" step="0.001"
+                     value="0.003"
+                     style="width:100%; padding:4px; border-radius:4px; border:1px solid var(--border);" />
+            </label>
+
             <div style="display:flex; gap:8px; margin-top:4px;">
               <button type="button" id="saveDetectionSettingsBtn" class="btn-action">
                 Guardar ajustes

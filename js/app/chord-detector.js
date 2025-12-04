@@ -54,6 +54,7 @@ const DEFAULT_DETECTION_SETTINGS = {
   maxDeviationCents: 35,  // filtrar notas muy desafinadas
   noteHoldTimeMs: 100,    // tiempo de retención de nota en pantalla
   chordMinQuality: 0.52,  // umbral de calidad para aceptar acorde
+  minVolumeRms: 0.003,    // umbral de volumen mínimo (RMS)
 };
 
 let NOTE_HISTORY_WINDOW_MS = DEFAULT_DETECTION_SETTINGS.historyWindowMs;
@@ -61,6 +62,7 @@ let MIN_NOTES_FOR_CHORD = DEFAULT_DETECTION_SETTINGS.minNotesForChord;
 let MAX_DEVIATION_CENTS = DEFAULT_DETECTION_SETTINGS.maxDeviationCents;
 let NOTE_HOLD_TIME_MS = DEFAULT_DETECTION_SETTINGS.noteHoldTimeMs;
 let CHORD_MIN_QUALITY = DEFAULT_DETECTION_SETTINGS.chordMinQuality;
+let MIN_VOLUME_RMS = DEFAULT_DETECTION_SETTINGS.minVolumeRms;
 
 // Guardamos notas detectadas recientemente: { pc, time }
 let recentNotes = [];
@@ -192,6 +194,7 @@ const minNotesForChordInput = document.getElementById("minNotesForChordInput");
 const maxDeviationCentsInput = document.getElementById("maxDeviationCentsInput");
 const noteHoldTimeInput = document.getElementById("noteHoldTimeInput");
 const chordMinQualityInput = document.getElementById("chordMinQualityInput");
+const minVolumeRmsInput = document.getElementById("minVolumeRmsInput");
 const saveDetectionSettingsBtn = document.getElementById("saveDetectionSettingsBtn");
 const resetDetectionSettingsBtn = document.getElementById("resetDetectionSettingsBtn");
 
@@ -267,6 +270,7 @@ function applyDetectionSettings(settings) {
   MAX_DEVIATION_CENTS = settings.maxDeviationCents;
   NOTE_HOLD_TIME_MS = settings.noteHoldTimeMs;
   CHORD_MIN_QUALITY = settings.chordMinQuality;
+  MIN_VOLUME_RMS = settings.minVolumeRms;
 }
 
 function reflectDetectionSettingsInInputs(settings) {
@@ -284,6 +288,9 @@ function reflectDetectionSettingsInInputs(settings) {
   }
   if (chordMinQualityInput) {
     chordMinQualityInput.value = settings.chordMinQuality;
+  }
+  if (minVolumeRmsInput) {
+    minVolumeRmsInput.value = settings.minVolumeRms;
   }
 }
 
@@ -308,6 +315,9 @@ function loadDetectionSettingsFromStorage() {
       if (typeof parsed.chordMinQuality === "number" && parsed.chordMinQuality >= 0) {
         settings.chordMinQuality = parsed.chordMinQuality;
       }
+      if (typeof parsed.minVolumeRms === "number" && parsed.minVolumeRms >= 0) {
+        settings.minVolumeRms = parsed.minVolumeRms;
+      }
     } catch (e) {
       console.warn("Could not parse detection settings from storage:", e);
     }
@@ -315,7 +325,7 @@ function loadDetectionSettingsFromStorage() {
   applyDetectionSettings(settings);
   reflectDetectionSettingsInInputs(settings);
   logMessage(
-    `Ajustes avanzados cargados (ventana=${settings.historyWindowMs}ms, mín notas=${settings.minNotesForChord}, max desv=${settings.maxDeviationCents}cents, hold=${settings.noteHoldTimeMs}ms, calidad=${settings.chordMinQuality})`
+    `Ajustes avanzados cargados (ventana=${settings.historyWindowMs}ms, mín notas=${settings.minNotesForChord}, max desv=${settings.maxDeviationCents}cents, hold=${settings.noteHoldTimeMs}ms, calidad=${settings.chordMinQuality}, vol=${settings.minVolumeRms})`
   );
 }
 
@@ -342,6 +352,10 @@ function readDetectionSettingsFromInputs() {
     const v = parseFloat(chordMinQualityInput.value);
     if (!isNaN(v) && v >= 0 && v <= 1) settings.chordMinQuality = v;
   }
+  if (minVolumeRmsInput) {
+    const v = parseFloat(minVolumeRmsInput.value);
+    if (!isNaN(v) && v >= 0) settings.minVolumeRms = v;
+  }
 
   return settings;
 }
@@ -351,7 +365,7 @@ function saveDetectionSettingsFromInputs() {
   localStorage.setItem(DETECTION_SETTINGS_KEY, JSON.stringify(settings));
   applyDetectionSettings(settings);
   logMessage(
-    `Ajustes avanzados guardados (ventana=${settings.historyWindowMs}ms, mín notas=${settings.minNotesForChord}, max desv=${settings.maxDeviationCents}cents, hold=${settings.noteHoldTimeMs}ms, calidad=${settings.chordMinQuality})`
+    `Ajustes avanzados guardados (ventana=${settings.historyWindowMs}ms, mín notas=${settings.minNotesForChord}, max desv=${settings.maxDeviationCents}cents, hold=${settings.noteHoldTimeMs}ms, calidad=${settings.chordMinQuality}, vol=${settings.minVolumeRms})`
   );
 }
 
@@ -415,7 +429,7 @@ function autoCorrelate(buffer, sampleRate) {
     sumSquares += v * v;
   }
   const rms = Math.sqrt(sumSquares / size);
-  if (rms < 0.01) return null; // too silent
+  if (rms < MIN_VOLUME_RMS) return null; // too silent
 
   let bestOffset = -1;
   let bestCorrelation = 0;
