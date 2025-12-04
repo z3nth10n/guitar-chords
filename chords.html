@@ -1,93 +1,99 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Detector de acordes para guitarra</title>
+  <title data-i18n="app_title">Guitar Chord Detector</title>
   <link rel="stylesheet" href="css/chords.css">
 </head>
 <body>
   <div class="app">
-    <h1>Detector de acordes</h1>
-    <p class="subtitle">Elige afinación (incluso personalizada), escribe los trastes y te digo qué acorde es.</p>
+    <h1 data-i18n="main_title">Chord Detector</h1>
+    <p class="subtitle" data-i18n="subtitle">Choose tuning (even custom), enter frets and I'll tell you what chord it is.</p>
 
     <!-- Tuning + notation -->
     <div class="controls">
-      <label for="tuningSelect">Afinación:</label>
+      <label for="tuningSelect" data-i18n="label_tuning">Tuning:</label>
       <select id="tuningSelect"></select>
 
-      <label for="notationSelect">Notación:</label>
+      <label for="notationSelect" data-i18n="label_notation">Notation:</label>
       <select id="notationSelect">
-        <option value="latin">Latina (Do, Re, Mi...)</option>
-        <option value="anglo">Anglosajona (C, D, E...)</option>
+        <option value="latin" data-i18n="notation_latin">Latin (Do, Re, Mi...)</option>
+        <option value="anglo" data-i18n="notation_anglo">Anglo (C, D, E...)</option>
+      </select>
+
+      <label for="langSelect" data-i18n="label_language">Language:</label>
+      <select id="langSelect">
+        <option value="en">English</option>
+        <option value="es">Español</option>
       </select>
     </div>
 
     <!-- Name + save custom tuning -->
     <div class="controls">
-      <label for="tuningNameInput">Nombre afinación:</label>
-      <input id="tuningNameInput" type="text" placeholder="Mi afinación" />
-      <button id="saveTuningButton" type="button">Guardar afinación</button>
+      <label for="tuningNameInput" data-i18n="label_tuning_name">Tuning Name:</label>
+      <input id="tuningNameInput" type="text" placeholder="My tuning" data-i18n-placeholder="placeholder_tuning_name" />
+      <button id="saveTuningButton" type="button" data-i18n="btn_save_tuning">Save Tuning</button>
     </div>
 
     <!-- Strings -->
     <div class="strings-container">
       <div class="strings-header">
-        <div>Cuerda</div>
-        <div>Afinación</div>
-        <div>Traste</div>
-        <div>Nota</div>
+        <div data-i18n="header_string">String</div>
+        <div data-i18n="header_tuning">Tuning</div>
+        <div data-i18n="header_fret">Fret</div>
+        <div data-i18n="header_note">Note</div>
       </div>
 
       <!-- String 1 -->
       <div class="string-row" data-string="1">
-        <div class="string-label">Cuerda 1</div>
+        <div class="string-label"><span data-i18n="string_label_prefix">String</span> 1</div>
         <select class="string-tuning"></select>
-        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
+        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." data-i18n-placeholder="placeholder_fret" />
         <input class="string-note" type="text" readonly />
       </div>
 
       <!-- String 2 -->
       <div class="string-row" data-string="2">
-        <div class="string-label">Cuerda 2</div>
+        <div class="string-label"><span data-i18n="string_label_prefix">String</span> 2</div>
         <select class="string-tuning"></select>
-        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
+        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." data-i18n-placeholder="placeholder_fret" />
         <input class="string-note" type="text" readonly />
       </div>
 
       <!-- String 3 -->
       <div class="string-row" data-string="3">
-        <div class="string-label">Cuerda 3</div>
+        <div class="string-label"><span data-i18n="string_label_prefix">String</span> 3</div>
         <select class="string-tuning"></select>
-        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
+        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." data-i18n-placeholder="placeholder_fret" />
         <input class="string-note" type="text" readonly />
       </div>
 
       <!-- String 4 -->
       <div class="string-row" data-string="4">
-        <div class="string-label">Cuerda 4</div>
+        <div class="string-label"><span data-i18n="string_label_prefix">String</span> 4</div>
         <select class="string-tuning"></select>
-        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
+        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." data-i18n-placeholder="placeholder_fret" />
         <input class="string-note" type="text" readonly />
       </div>
 
       <!-- String 5 -->
       <div class="string-row" data-string="5">
-        <div class="string-label">Cuerda 5</div>
+        <div class="string-label"><span data-i18n="string_label_prefix">String</span> 5</div>
         <select class="string-tuning"></select>
-        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
+        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." data-i18n-placeholder="placeholder_fret" />
         <input class="string-note" type="text" readonly />
       </div>
 
       <!-- String 6 -->
       <div class="string-row" data-string="6">
-        <div class="string-label">Cuerda 6</div>
+        <div class="string-label"><span data-i18n="string_label_prefix">String</span> 6</div>
         <select class="string-tuning"></select>
-        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
+        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." data-i18n-placeholder="placeholder_fret" />
         <input class="string-note" type="text" readonly />
       </div>
     </div>
 
-    <button id="calcButton">Calcular acorde</button>
+    <button id="calcButton" data-i18n="btn_calc">Calculate Chord</button>
 
     <div id="messages">
       <div id="errors"></div>
@@ -95,14 +101,15 @@
       <div id="detail"></div>
     </div>
 
-    <p class="hint">
-      • Deja la casilla de traste vacía o escribe <strong>x</strong> si esa cuerda no suena.<br />
-      • Usa números de <strong>0 a 24</strong> para los trastes.<br />
-      • En afinación, haz clic en cada cuerda para elegir la nota desde un desplegable.<br />
-      • Escribe un nombre y pulsa <strong>Guardar afinación</strong> para guardarla en el navegador.
+    <p class="hint" data-i18n="hint_text" data-i18n-html="true">
+       Leave fret empty or type <strong>x</strong> if string is muted.<br />
+       Use numbers <strong>0 to 24</strong> for frets.<br />
+       In tuning, click each string to choose the note from a dropdown.<br />
+       Enter a name and click <strong>Save Tuning</strong> to save it in the browser.
     </p>
   </div>
 
+  <script src="js/langs.js"></script>
   <script src="js/chords.js"></script>
 </body>
 </html>

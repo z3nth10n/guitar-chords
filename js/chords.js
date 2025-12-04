@@ -12,17 +12,17 @@
         : NOTE_NAMES[pc];
     }
 
-    // Built-in tunings: [string1, string2, ..., string6] as pitch class
+    // Built-in tunings
     const builtInTunings = {
-      "E estándar":       [4, 11, 7, 2, 9, 4], // E B G D A E
-      "Drop D":           [4, 11, 7, 2, 9, 2], // E B G D A D
-      "D estándar":       [2, 9, 5, 0, 7, 2],  // D A F C G D
-      "Drop C":           [2, 9, 5, 0, 7, 0],  // D A F C G C
-      "Drop B":           [1, 8, 4, 11, 6, 11],// C# G# E B F# B
-      "Drop A":           [11, 6, 2, 9, 4, 9]  // B F# D A E A
+      "tuning_e_std":       [4, 11, 7, 2, 9, 4],
+      "tuning_drop_d":      [4, 11, 7, 2, 9, 2],
+      "tuning_d_std":       [2, 9, 5, 0, 7, 2],
+      "tuning_drop_c":      [2, 9, 5, 0, 7, 0],
+      "tuning_drop_b":      [1, 8, 4, 11, 6, 11],
+      "tuning_drop_a":      [11, 6, 2, 9, 4, 9]
     };
 
-    // Custom tunings (saved in localStorage)
+    // Custom tunings
     let customTunings = {};
     const CUSTOM_TUNINGS_KEY = "customGuitarTuningsV1";
 
@@ -33,7 +33,7 @@
         const obj = JSON.parse(raw);
         if (obj && typeof obj === "object") return obj;
       } catch (e) {
-        console.warn("No se pudo parsear las afinaciones personalizadas", e);
+        console.warn("Could not parse custom tunings", e);
       }
       return {};
     }
@@ -43,51 +43,66 @@
       localStorage.setItem(CUSTOM_TUNINGS_KEY, json);
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
       const tuningSelect = document.getElementById("tuningSelect");
       const notationSelect = document.getElementById("notationSelect");
       const fretInputs = Array.from(document.querySelectorAll(".fret-input"));
       const stringTunings = Array.from(document.querySelectorAll(".string-tuning"));
       const saveTuningButton = document.getElementById("saveTuningButton");
       const calcButton = document.getElementById("calcButton");
+      const langSelect = document.getElementById("langSelect");
 
       currentNotation = notationSelect.value || "latin";
 
-      // Fill note options for each string
-      buildStringTuningOptions();
-
-      // Load custom tunings from localStorage
-      customTunings = loadCustomTunings();
-
-      // Fill tuning dropdown
-      populateTuningSelect("builtin::E estándar");
-      applySelectedTuning();
-
-      // Notation change (Anglo/Latin)
-      notationSelect.addEventListener("change", (e) => {
-        currentNotation = e.target.value;
-        // Update note names in selects and third column
+      function updateChordUI() {
         refreshStringTuningOptionLabels();
+        populateTuningSelect(document.getElementById("tuningSelect").value);
         updateStringNotes();
-        // If you also want to update the chord text directly:
-        // calculateChord();
+        
+        const resultEl = document.getElementById("result");
+        if (resultEl.textContent) {
+            calculateChord();
+        }
+      }
+
+      // Default language to English
+      const userLang = 'en';
+      langSelect.value = userLang;
+
+      buildStringTuningOptions();
+      customTunings = loadCustomTunings();
+      populateTuningSelect("builtin::tuning_e_std");
+      applySelectedTuning();
+      
+      // Use window.loadTranslations to ensure it's found
+      if (window.loadTranslations) {
+        await window.loadTranslations(userLang, updateChordUI);
+      }
+
+      langSelect.addEventListener("change", (e) => {
+        if (window.loadTranslations) {
+            window.loadTranslations(e.target.value, updateChordUI);
+        }
       });
 
-      // Tuning change (from main dropdown)
+      notationSelect.addEventListener("change", (e) => {
+        currentNotation = e.target.value;
+        refreshStringTuningOptionLabels();
+        updateStringNotes();
+      });
+
       tuningSelect.addEventListener("change", () => {
         applySelectedTuning();
         clearFretInputs();
         clearMessages();
       });
 
-      // Manual tuning change string by string
       stringTunings.forEach(sel => {
         sel.addEventListener("change", () => {
           updateStringNotes();
         });
       });
 
-      // Navigation with Enter and Tab between fret inputs
       fretInputs.forEach(input => {
         input.addEventListener("keydown", (ev) => {
           if (ev.key === "Enter") {
@@ -117,7 +132,6 @@
       updateStringNotes();
     });
 
-    // Builds options (C, C#, D...) for each tuning dropdown
     function buildStringTuningOptions() {
       const stringTunings = document.querySelectorAll(".string-tuning");
       stringTunings.forEach(sel => {
@@ -131,7 +145,6 @@
       });
     }
 
-    // Only changes labels (C/Do, etc.) keeping the value
     function refreshStringTuningOptionLabels() {
       const stringTunings = document.querySelectorAll(".string-tuning");
       stringTunings.forEach(sel => {
@@ -142,17 +155,16 @@
       });
     }
 
-    // Fills tuning dropdown with built-in + custom
     function populateTuningSelect(selectedValue) {
       const tuningSelect = document.getElementById("tuningSelect");
       tuningSelect.innerHTML = "";
 
       const builtGroup = document.createElement("optgroup");
-      builtGroup.label = "Predefinidas";
-      Object.keys(builtInTunings).forEach(name => {
+      builtGroup.label = t("group_builtin");
+      Object.keys(builtInTunings).forEach(key => {
         const option = document.createElement("option");
-        option.value = "builtin::" + name;
-        option.textContent = name;
+        option.value = "builtin::" + key;
+        option.textContent = t(key);
         builtGroup.appendChild(option);
       });
       tuningSelect.appendChild(builtGroup);
@@ -160,7 +172,7 @@
       const customNames = Object.keys(customTunings);
       if (customNames.length > 0) {
         const customGroup = document.createElement("optgroup");
-        customGroup.label = "Personalizadas";
+        customGroup.label = t("group_custom");
         customNames.forEach(name => {
           const option = document.createElement("option");
           option.value = "custom::" + name;
@@ -177,14 +189,13 @@
       ) {
         tuningSelect.value = selectedValue;
       } else {
-        const defaultValue = "builtin::E estándar";
+        const defaultValue = "builtin::tuning_e_std";
         tuningSelect.value = options.some(o => o.value === defaultValue)
           ? defaultValue
           : (options[0]?.value || "");
       }
     }
 
-    // Applies selected tuning to string dropdowns
     function applySelectedTuning() {
       const tuningSelect = document.getElementById("tuningSelect");
       const value = tuningSelect.value;
@@ -204,15 +215,10 @@
         sel.value = String(notes[index]);
       });
 
-      // If custom tuning, fill name to edit it
       const nameInput = document.getElementById("tuningNameInput");
       if (kind === "custom") {
         nameInput.value = name;
-      } else {
-        // If you prefer not to set the name when selecting a built-in one:
-        // nameInput.value = "";
       }
-
       updateStringNotes();
     }
 
@@ -231,7 +237,6 @@
       document.getElementById("detail").textContent = "";
     }
 
-    // Updates third column (resulting note) based on tuning and fret
     function updateStringNotes() {
       const fretInputs = document.querySelectorAll(".fret-input");
       const noteOutputs = document.querySelectorAll(".string-note");
@@ -249,7 +254,7 @@
 
         const fret = parseInt(raw, 10);
         if (Number.isNaN(fret) || fret < 0 || fret > 24) {
-          out.value = "–";
+          out.value = "";
           return;
         }
 
@@ -259,7 +264,6 @@
       });
     }
 
-    // Chord calculation
     function calculateChord() {
       const errorsEl = document.getElementById("errors");
       const resultEl = document.getElementById("result");
@@ -287,8 +291,7 @@
         const fret = parseInt(raw, 10);
         if (Number.isNaN(fret) || fret < 0 || fret > 24) {
           hasError = true;
-          errorsEl.textContent =
-            "Trastes inválidos. Usa números entre 0 y 24 o deja vacío/X para cuerdas que no suenan.";
+          errorsEl.textContent = t("msg_error_data");
           return;
         }
 
@@ -299,13 +302,12 @@
       });
 
       if (hasError) {
-        resultEl.textContent = "Error en los datos";
+        resultEl.textContent = t("msg_error_data");
         return;
       }
 
       if (!hasAnyNote) {
-        resultEl.textContent = "Sin notas";
-        detailEl.textContent = "Introduce al menos una cuerda con traste.";
+        resultEl.textContent = t("msg_no_notes");
         return;
       }
 
@@ -314,17 +316,17 @@
       const noteNames = uniquePcs.map(pc => getNoteName(pc)).join(" - ");
 
       if (!chordInfo) {
-        resultEl.textContent = "Acorde no reconocido";
-        detailEl.textContent = "Notas detectadas: " + noteNames;
+        resultEl.textContent = t("msg_unknown_chord");
+        detailEl.textContent = t("msg_notes_detected") + noteNames;
       } else {
         resultEl.textContent = chordInfo.name;
         let extra;
         if (chordInfo.isPowerChord) {
-          extra = "Tipo: Power chord (quinta justa) | Notas: " + noteNames;
-        } else if (chordInfo.quality === "Nota aislada") {
-          extra = "Nota aislada | Nota: " + noteNames;
+          extra = t("msg_type") + t("power_chord") + t("msg_notes") + noteNames;
+        } else if (chordInfo.quality === "single_note") {
+           extra = t("single_note") + t("msg_notes") + noteNames;
         } else {
-          extra = "Tipo: " + chordInfo.quality + " | Notas: " + noteNames;
+          extra = t("msg_type") + t(chordInfo.quality) + t("msg_notes") + noteNames;
         }
         detailEl.textContent = extra;
       }
@@ -332,22 +334,21 @@
       updateStringNotes();
     }
 
-    // Chord patterns (intervals from root)
     const CHORD_PATTERNS = [
-      { name: "Mayor",               suffix: "",      intervals: [0, 4, 7] },
-      { name: "Menor",               suffix: "m",     intervals: [0, 3, 7] },
-      { name: "Disminuido",          suffix: "dim",   intervals: [0, 3, 6] },
-      { name: "Aumentado",           suffix: "aug",   intervals: [0, 4, 8] },
-      { name: "Suspendido 2",        suffix: "sus2",  intervals: [0, 2, 7] },
-      { name: "Suspendido 4",        suffix: "sus4",  intervals: [0, 5, 7] },
-      { name: "Mayor 7",             suffix: "maj7",  intervals: [0, 4, 7, 11] },
-      { name: "Menor 7",             suffix: "m7",    intervals: [0, 3, 7, 10] },
-      { name: "Dominante 7",         suffix: "7",     intervals: [0, 4, 7, 10] },
-      { name: "Semidisminuido 7",    suffix: "m7b5",  intervals: [0, 3, 6, 10] },
-      { name: "Disminuido 7",        suffix: "dim7",  intervals: [0, 3, 6, 9] },
-      { name: "Menor mayor 7",       suffix: "mMaj7", intervals: [0, 3, 7, 11] },
-      { name: "Mayor 6",             suffix: "6",     intervals: [0, 4, 7, 9] },
-      { name: "Menor 6",             suffix: "m6",    intervals: [0, 3, 7, 9] }
+      { name: "chord_major",               suffix: "",      intervals: [0, 4, 7] },
+      { name: "chord_minor",               suffix: "m",     intervals: [0, 3, 7] },
+      { name: "chord_dim",          suffix: "dim",   intervals: [0, 3, 6] },
+      { name: "chord_aug",           suffix: "aug",   intervals: [0, 4, 8] },
+      { name: "chord_sus2",        suffix: "sus2",  intervals: [0, 2, 7] },
+      { name: "chord_sus4",        suffix: "sus4",  intervals: [0, 5, 7] },
+      { name: "chord_maj7",             suffix: "maj7",  intervals: [0, 4, 7, 11] },
+      { name: "chord_m7",             suffix: "m7",    intervals: [0, 3, 7, 10] },
+      { name: "chord_dom7",         suffix: "7",     intervals: [0, 4, 7, 10] },
+      { name: "chord_m7b5",    suffix: "m7b5",  intervals: [0, 3, 6, 10] },
+      { name: "chord_dim7",        suffix: "dim7",  intervals: [0, 3, 6, 9] },
+      { name: "chord_mmaj7",       suffix: "mMaj7", intervals: [0, 3, 7, 11] },
+      { name: "chord_maj6",             suffix: "6",     intervals: [0, 4, 7, 9] },
+      { name: "chord_m6",             suffix: "m6",    intervals: [0, 3, 7, 9] }
     ];
 
     function detectChord(notePcs) {
@@ -356,17 +357,15 @@
 
       pcs.sort((a, b) => a - b);
 
-      // Single note
       if (pcs.length === 1) {
         const rootName = getNoteName(pcs[0]);
         return {
           name: rootName,
           root: rootName,
-          quality: "Nota aislada"
+          quality: "single_note"
         };
       }
 
-      // Two notes: try to detect power chord (fifth)
       if (pcs.length === 2) {
         const [a, b] = pcs;
         const intervalAB = (b - a + 12) % 12;
@@ -378,14 +377,13 @@
           return {
             name: rootName + "5",
             root: rootName,
-            quality: "Power chord (quinta justa)",
+            quality: "power_chord",
             isPowerChord: true
           };
         }
         return null;
       }
 
-      // Three or more notes: try all as possible root
       let bestMatch = null;
 
       pcs.forEach(rootPc => {
@@ -417,28 +415,25 @@
       };
     }
 
-    // Saves current tuning (based on string dropdowns) with the given name
     function saveCurrentTuning() {
       const nameInput = document.getElementById("tuningNameInput");
       const name = nameInput.value.trim();
       if (!name) {
-        alert("Escribe un nombre para la afinación personalizada.");
+        alert(t("msg_enter_name"));
         return;
       }
 
       const stringTunings = document.querySelectorAll(".string-tuning");
       if (stringTunings.length !== 6) {
-        alert("No se ha podido leer la afinación de las cuerdas.");
+        alert(t("msg_error_reading_strings"));
         return;
       }
 
       const notes = Array.from(stringTunings).map(sel => parseInt(sel.value, 10));
 
-      // Create or update custom tuning
       customTunings[name] = notes;
       saveCustomTunings();
 
-      // Select this tuning in the dropdown
       const selectedValue = "custom::" + name;
       populateTuningSelect(selectedValue);
       applySelectedTuning();
