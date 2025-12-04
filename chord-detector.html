@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title data-i18n="app_title">Detector de acordes y notas de guitarra</title>
+  <title data-i18n="app_title">Guitar Chord and Note Detector</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="css/chord-detector.css">
 </head>
@@ -13,21 +13,21 @@
       <div>
         <h1 data-i18n="main_title">Guitar Analyzer</h1>
         <p class="subtitle" data-i18n="subtitle">
-          Toca una nota o un acorde de guitarra. El sistema intentará adivinar la nota, la cuerda/traste
-          y, si es posible, el acorde.
+          Play a note or a guitar chord. The system will try to guess the note, string/fret
+          and, if possible, the chord.
         </p>
       </div>
       <div class="status-chip">
         <span id="statusDot" class="status-dot idle"></span>
-        <span id="statusText" data-i18n="status_stopped">Parado</span>
+        <span id="statusText" data-i18n="status_stopped">Stopped</span>
       </div>
     </div>
 
     <div class="controls">
-      <button id="toggleButton" type="button" data-i18n="btn_start">Empezar a escuchar</button>
+      <button id="toggleButton" type="button" data-i18n="btn_start">Start Listening</button>
       
       <div style="margin-left: auto; display: flex; align-items: center;">
-          <label for="langSelect" data-i18n="label_language" style="margin-right: 8px; font-size: 13px; color: var(--muted);">Idioma:</label>
+          <label for="langSelect" data-i18n="label_language" style="margin-right: 8px; font-size: 13px; color: var(--muted);">Language:</label>
           <select id="langSelect">
             <option value="en">English</option>
             <option value="es">Español</option>
@@ -37,14 +37,14 @@
 
     <div class="panel">
       <div class="result-chord">
-        <div class="result-chord-label" data-i18n="label_chord_detected">Acorde detectado</div>
+        <div class="result-chord-label" data-i18n="label_chord_detected">Detected Chord</div>
         <div id="chordDisplay" class="result-chord-value"></div>
-        <div id="chordNotes" class="result-chord-notes" data-i18n="msg_play_chord">Toca varias cuerdas para intentar detectar un acorde.</div>
+        <div id="chordNotes" class="result-chord-notes" data-i18n="msg_play_chord">Play multiple strings to try to detect a chord.</div>
       </div>
 
       <div class="result-grid">
         <div class="result-card">
-          <div class="result-label" data-i18n="label_main_note">Nota principal</div>
+          <div class="result-label" data-i18n="label_main_note">Main Note</div>
           <div id="noteDisplay" class="result-main"></div>
           <div id="noteDetail" class="result-secondary"></div>
         </div>

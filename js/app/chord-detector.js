@@ -1,4 +1,4 @@
-    // ===================== Configuración básica =====================
+    // ===================== Basic Configuration =====================
     const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     const NOTE_NAMES_LATIN = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
 
@@ -9,14 +9,14 @@
         return currentNotation === "latin" ? NOTE_NAMES_LATIN[pc] : NOTE_NAMES[pc];
     }
 
-    // Afinación estándar en MIDI: E2, A2, D3, G3, B3, E4
+    // Standard MIDI tuning: E2, A2, D3, G3, B3, E4
     const STRING_TUNINGS = [
-      { name: "6ª (Mi/E)", midi: 40 },
-      { name: "5ª (La/A)", midi: 45 },
-      { name: "4ª (Re/D)", midi: 50 },
-      { name: "3ª (Sol/G)", midi: 55 },
-      { name: "2ª (Si/B)", midi: 59 },
-      { name: "1ª (Mi/E)", midi: 64 },
+      { name: "6th (E)", midi: 40 },
+      { name: "5th (A)", midi: 45 },
+      { name: "4th (D)", midi: 50 },
+      { name: "3rd (G)", midi: 55 },
+      { name: "2nd (B)", midi: 59 },
+      { name: "1st (E)", midi: 64 },
     ];
 
     const MAX_FRET = 20;
@@ -33,7 +33,7 @@
       { key: "chord_sus4", short: "sus4", intervals: [0, 5, 7] },
     ];
 
-    // ===================== Estado de audio =====================
+    // ===================== Audio State =====================
     let audioContext = null;
     let analyser = null;
     let mediaStream = null;
@@ -42,7 +42,7 @@
     const timeDomainBufferSize = 2048;
     let timeDomainBuffer = null;
 
-    // ===================== Elementos de la UI =====================
+    // ===================== UI Elements =====================
     const toggleButton = document.getElementById("toggleButton");
     const statusDot = document.getElementById("statusDot");
     const statusText = document.getElementById("statusText");
@@ -58,13 +58,13 @@
     const waveCanvas = document.getElementById("waveCanvas");
     const waveCtx = waveCanvas.getContext("2d");
 
-    // ===================== Utilidades =====================
+    // ===================== Utilities =====================
     function log2(x) {
       return Math.log(x) / Math.LN2;
     }
 
     function frequencyToNote(freq) {
-      // Convertir frecuencia a nota MIDI aproximada
+      // Convert frequency to approximate MIDI note
       const midi = Math.round(69 + 12 * log2(freq / 440));
       const pc = (midi % 12 + 12) % 12;
       const name = getNoteName(pc);
@@ -87,25 +87,25 @@
       return best;
     }
 
-    // ===================== Autocorrelación para detectar pitch =====================
+    // ===================== Autocorrelation for Pitch Detection =====================
     function autoCorrelate(buffer, sampleRate) {
       const size = buffer.length;
 
-      // Calcular RMS para filtrar silencio/ruido muy bajo
+      // Calculate RMS to filter silence/very low noise
       let sumSquares = 0;
       for (let i = 0; i < size; i++) {
         const v = buffer[i];
         sumSquares += v * v;
       }
       const rms = Math.sqrt(sumSquares / size);
-      if (rms < 0.01) return null; // demasiado silencioso
+      if (rms < 0.01) return null; // too silent
 
       let bestOffset = -1;
       let bestCorrelation = 0;
 
-      // Probamos distintos offsets (periodos)
+      // Try different offsets (periods)
       const minOffset = 20;         // ~2 kHz
-      const maxOffset = size / 2;   // límite inferior en frecuencia
+      const maxOffset = size / 2;   // lower frequency limit
 
       for (let offset = minOffset; offset < maxOffset; offset++) {
         let correlation = 0;
@@ -123,13 +123,13 @@
       if (bestOffset === -1) return null;
 
       const frequency = sampleRate / bestOffset;
-      // Filtramos frecuencias fuera del rango típico de guitarra (aprox)
+      // Filter frequencies outside typical guitar range (approx)
       if (frequency < 70 || frequency > 1500) return null;
 
       return frequency;
     }
 
-    // ===================== Detección de acorde (muy aproximada) =====================
+    // ===================== Chord Detection (Very Approximate) =====================
     function detectChordFromSpectrum() {
       if (!analyser || !audioContext) return null;
 
@@ -137,7 +137,7 @@
       const spectrum = new Uint8Array(binCount);
       analyser.getByteFrequencyData(spectrum);
 
-      // Cogemos los picos más altos
+      // Pick the highest peaks
       const bins = [];
       for (let i = 0; i < binCount; i++) {
         bins.push({ index: i, value: spectrum[i] });
@@ -163,7 +163,7 @@
       const noteClasses = Array.from(noteClassesSet);
       if (noteClasses.length < 3) return null;
 
-      // Intentamos encajar el conjunto de notas con algún tipo de acorde
+      // Try to fit the set of notes with some chord type
       let best = null;
 
       for (const rootClass of noteClasses) {
@@ -198,7 +198,7 @@
       const label = rootName + best.type.short;
       const typeName = window.t ? window.t(best.type.key) : best.type.key;
 
-      // Notas presentes (únicamente las que encajan con el acorde)
+      // Present notes (only those fitting the chord)
       const presentNotes = best.expected
         .filter(n => best.noteClasses.includes(n))
         .map(n => getNoteName(n));
@@ -211,7 +211,7 @@
       };
     }
 
-    // ===================== Dibujo de forma de onda =====================
+    // ===================== Waveform Drawing =====================
     function drawWaveform(buffer) {
       if (!waveCtx || !buffer) return;
 
@@ -236,13 +236,13 @@
       waveCtx.stroke();
     }
 
-    // ===================== Loop de análisis =====================
+    // ===================== Analysis Loop =====================
     function updateUIForSilence() {
       noteDisplay.textContent = "—";
       noteDetail.textContent = window.t ? window.t("msg_no_clear_note") : "No clear note";
       stringFretDisplay.textContent = "—";
       stringFretDetail.textContent = "";
-      // No borramos el acorde: así puedes ver el último que detectó.
+      // We don't clear the chord: so you can see the last one detected.
     }
 
     function analysisLoop() {
@@ -267,7 +267,7 @@
         if (sf) {
           const msgApprox = window.t ? window.t("msg_approx") : "(approx)";
           const approx = sf.diff > 0.4 ? ` ${msgApprox}` : "";
-          stringFretDisplay.textContent = `${sf.string.name}, traste ${sf.fret}${approx}`;
+          stringFretDisplay.textContent = `${sf.string.name}, fret ${sf.fret}${approx}`;
           const noteName = getNoteName((sf.string.midi + sf.fret) % 12);
           const msgSuggested = window.t ? window.t("msg_suggested_note") : "Note at suggested position:";
           stringFretDetail.textContent = `${msgSuggested} ${noteName}`;
@@ -279,7 +279,7 @@
         updateUIForSilence();
       }
 
-      // Detección de acorde (muy básica)
+      // Chord detection (very basic)
       const chord = detectChordFromSpectrum();
       if (chord) {
         chordDisplay.textContent = chord.label;
@@ -293,7 +293,7 @@
       requestAnimationFrame(analysisLoop);
     }
 
-    // ===================== Control de audio (start/stop) =====================
+    // ===================== Audio Control (start/stop) =====================
     async function startListening() {
       if (running) return;
       errorsEl.textContent = "";
@@ -373,11 +373,11 @@
       }
     });
 
-    // ===================== Inicialización =====================
+    // ===================== Initialization =====================
     document.addEventListener("DOMContentLoaded", () => {
         // Set translation prefix for this page
         if (window.setTranslationPrefix) {
-            window.setTranslationPrefix('chord-detector');
+            window.setTranslationPrefix('chords-detector/chord-detector');
         }
 
         // Detect browser language

@@ -44,6 +44,11 @@
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
+      // Set translation prefix for this page
+      if (window.setTranslationPrefix) {
+          window.setTranslationPrefix('chords/chords');
+      }
+
       const tuningSelect = document.getElementById("tuningSelect");
       const notationSelect = document.getElementById("notationSelect");
       const fretInputs = Array.from(document.querySelectorAll(".fret-input"));
