@@ -6,5 +6,10 @@ window.translations_en = {
   "notation_latin": "Latin (Do, Re, Mi...)",
   "notation_anglo": "Anglo (C, D, E...)",
   "label_language": "Language:",
-  "btn_back": "Back"
+  "btn_back": "Back",
+  "label_root": "Root",
+  "label_type": "Type",
+  "type_Major": "Major",
+  "type_Minor": "Minor",
+  "type_7": "7"
 };
