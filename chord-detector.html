@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Detector de acordes y notas de guitarra</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    /* === Estilos base que subiste (ligeramente reorganizados) === */
+    :root {
+      --bg: #020617;
+      --bg-alt: #0f172a;
+      --card-bg: #020617;
+      --accent: #22c55e;
+      --accent-soft: rgba(34, 197, 94, 0.25);
+      --border: #1f2933;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --error: #fb7185;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, #1d4ed8 0, transparent 55%),
+        radial-gradient(circle at bottom right, #22c55e 0, transparent 55%),
+        var(--bg);
+    }
+
+    .app {
+      width: 100%;
+      max-width: 720px;
+      background: linear-gradient(to bottom right, rgba(15,23,42,0.96), rgba(15,23,42,0.98));
+      border-radius: 24px;
+      padding: 22px 26px 20px;
+      box-shadow:
+        0 24px 60px rgba(15, 23, 42, 0.85),
+        0 0 0 1px rgba(148, 163, 184, 0.1);
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 22px;
+      letter-spacing: 0.03em;
+    }
+
+    .subtitle {
+      margin: 0 0 16px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .controls label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    select {
+      background: #020617;
+      color: var(--text);
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      font-size: 13px;
+      outline: none;
+      min-width: 140px;
+    }
+
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent-soft);
+    }
+
+    input {
+      background: #020617;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      width: 100%;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent-soft);
+    }
+
+    .strings-container {
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.18), transparent 55%),
+                  rgba(15, 23, 42, 0.9);
+      padding: 10px 14px;
+      margin-bottom: 12px;
+    }
+
+    .strings-header {
+      display: grid;
+      grid-template-columns: 70px 1fr 1fr 90px;
+      gap: 8px;
+      padding-bottom: 4px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .string-row {
+      display: grid;
+      grid-template-columns: 70px 1fr 1fr 90px;
+      align-items: center;
+      gap: 8px;
+      padding: 2px 0;
+    }
+
+    .string-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .string-tuning {
+      text-align: center;
+      font-weight: 600;
+      background: rgba(15, 23, 42, 0.85);
+      border-style: dashed;
+      border-color: rgba(148, 163, 184, 0.7);
+      padding-left: 4px;
+      padding-right: 18px;
+    }
+
+    .string-note {
+      text-align: center;
+      font-size: 12px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+    }
+
+    .fret-input {
+      text-align: center;
+    }
+
+    .fret-input::placeholder {
+      color: rgba(148, 163, 184, 0.7);
+    }
+
+    #calcButton {
+      margin-top: 8px;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg, #22c55e, #a3e635);
+      color: #022c22;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    #calcButton:hover {
+      filter: brightness(1.05);
+      transform: translateY(-0.5px);
+    }
+
+    #calcButton:active {
+      transform: translateY(0.5px);
+      filter: brightness(0.97);
+    }
+
+    #saveTuningButton {
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      background: transparent;
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    #saveTuningButton:hover {
+      background: rgba(148, 163, 184, 0.15);
+    }
+
+    #tuningNameInput {
+      min-width: 140px;
+    }
+
+    #messages {
+      margin-top: 10px;
+      min-height: 54px;
+    }
+
+    #errors {
+      min-height: 18px;
+      font-size: 12px;
+      color: var(--error);
+    }
+
+    #result {
+      margin-top: 4px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    #detail {
+      margin-top: 2px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .hint {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 600px) {
+      .app {
+        padding: 18px 16px 16px;
+        border-radius: 20px;
+      }
+
+      .string-row,
+      .strings-header {
+        grid-template-columns: 60px 1fr 1fr 70px;
+      }
+    }
+
+    /* === Estilos adicionales para el detector de audio === */
+
+    .header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: rgba(15, 23, 42, 0.7);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--muted);
+    }
+
+    .status-dot.listening {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent-soft);
+    }
+
+    .status-dot.idle {
+      background: #4b5563;
+    }
+
+    #toggleButton {
+      margin-top: 0;
+      padding: 9px 16px;
+      border-radius: 999px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg, #22c55e, #a3e635);
+      color: #022c22;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    #toggleButton:hover {
+      filter: brightness(1.05);
+      transform: translateY(-0.5px);
+    }
+
+    #toggleButton:active {
+      transform: translateY(0.5px);
+      filter: brightness(0.97);
+    }
+
+    .panel {
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.18), transparent 55%),
+                  rgba(15, 23, 42, 0.9);
+      padding: 14px 14px 10px;
+    }
+
+    .result-chord {
+      margin-bottom: 10px;
+    }
+
+    .result-chord-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .result-chord-value {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .result-chord-notes {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .result-card {
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.9);
+      padding: 10px 11px 8px;
+    }
+
+    .result-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .result-main {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .result-secondary {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    #waveCanvas {
+      width: 100%;
+      height: 80px;
+      border-radius: 12px;
+      margin-top: 12px;
+      background: radial-gradient(circle at center, rgba(31, 41, 55, 0.8), rgba(15, 23, 42, 0.98));
+      border: 1px solid rgba(15, 23, 42, 0.95);
+    }
+
+    .hint strong {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    @media (max-width: 600px) {
+      .result-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="header-row">
+      <div>
+        <h1>Guitar Analyzer</h1>
+        <p class="subtitle">
+          Toca una nota o un acorde de guitarra. El sistema intentará adivinar la nota, la cuerda/traste
+          y, si es posible, el acorde.
+        </p>
+      </div>
+      <div class="status-chip">
+        <span id="statusDot" class="status-dot idle"></span>
+        <span id="statusText">Parado</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="toggleButton" type="button">Empezar a escuchar</button>
+    </div>
+
+    <div class="panel">
+      <div class="result-chord">
+        <div class="result-chord-label">Acorde detectado</div>
+        <div id="chordDisplay" class="result-chord-value">—</div>
+        <div id="chordNotes" class="result-chord-notes">Toca varias cuerdas para intentar detectar un acorde.</div>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-card">
+          <div class="result-label">Nota principal</div>
+          <div id="noteDisplay" class="result-main">—</div>
+          <div id="noteDetail" class="result-secondary"></div>
+        </div>
+
+        <div class="result-card">
+          <div class="result-label">Cuerda / traste sugeridos</div>
+          <div id="stringFretDisplay" class="result-main">—</div>
+          <div id="stringFretDetail" class="result-secondary"></div>
+        </div>
+      </div>
+
+      <div id="errors"></div>
+      <p class="hint">
+        Consejo: usa una <strong>guitarra bien afinada</strong>, toca limpio cerca del micro y evita ruido de fondo.
+        La detección de acordes es aproximada (no es tan precisa como un plugin dedicado).
+      </p>
+    </div>
+
+    <canvas id="waveCanvas" width="640" height="80"></canvas>
+  </div>
+
+  <script>
+    // ===================== Configuración básica =====================
+    const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+    // Afinación estándar en MIDI: E2, A2, D3, G3, B3, E4
+    const STRING_TUNINGS = [
+      { name: "6ª (Mi grave)", midi: 40 },
+      { name: "5ª (La)", midi: 45 },
+      { name: "4ª (Re)", midi: 50 },
+      { name: "3ª (Sol)", midi: 55 },
+      { name: "2ª (Si)", midi: 59 },
+      { name: "1ª (Mi aguda)", midi: 64 },
+    ];
+
+    const MAX_FRET = 20;
+
+    const CHORD_TYPES = [
+      { name: "Mayor", short: "", intervals: [0, 4, 7] },
+      { name: "Menor", short: "m", intervals: [0, 3, 7] },
+      { name: "Dominante 7", short: "7", intervals: [0, 4, 7, 10] },
+      { name: "Mayor 7", short: "maj7", intervals: [0, 4, 7, 11] },
+      { name: "Menor 7", short: "m7", intervals: [0, 3, 7, 10] },
+      { name: "Disminuido", short: "dim", intervals: [0, 3, 6] },
+      { name: "Aumentado", short: "aug", intervals: [0, 4, 8] },
+      { name: "Sus2", short: "sus2", intervals: [0, 2, 7] },
+      { name: "Sus4", short: "sus4", intervals: [0, 5, 7] },
+    ];
+
+    // ===================== Estado de audio =====================
+    let audioContext = null;
+    let analyser = null;
+    let mediaStream = null;
+    let running = false;
+
+    const timeDomainBufferSize = 2048;
+    let timeDomainBuffer = null;
+
+    // ===================== Elementos de la UI =====================
+    const toggleButton = document.getElementById("toggleButton");
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    const chordDisplay = document.getElementById("chordDisplay");
+    const chordNotes = document.getElementById("chordNotes");
+    const noteDisplay = document.getElementById("noteDisplay");
+    const noteDetail = document.getElementById("noteDetail");
+    const stringFretDisplay = document.getElementById("stringFretDisplay");
+    const stringFretDetail = document.getElementById("stringFretDetail");
+    const errorsEl = document.getElementById("errors");
+
+    const waveCanvas = document.getElementById("waveCanvas");
+    const waveCtx = waveCanvas.getContext("2d");
+
+    // ===================== Utilidades =====================
+    function log2(x) {
+      return Math.log(x) / Math.LN2;
+    }
+
+    function frequencyToNote(freq) {
+      // Convertir frecuencia a nota MIDI aproximada
+      const midi = Math.round(69 + 12 * log2(freq / 440));
+      const name = NOTE_NAMES[(midi % 12 + 12) % 12];
+      const exactFreq = 440 * Math.pow(2, (midi - 69) / 12);
+      const cents = 1200 * log2(freq / exactFreq);
+      return { midi, name, exactFreq, cents, freq };
+    }
+
+    function guessStringAndFret(midi) {
+      let best = null;
+      for (const s of STRING_TUNINGS) {
+        for (let fret = 0; fret <= MAX_FRET; fret++) {
+          const noteMidi = s.midi + fret;
+          const diff = Math.abs(noteMidi - midi);
+          if (best === null || diff < best.diff) {
+            best = { string: s, fret, diff };
+          }
+        }
+      }
+      return best;
+    }
+
+    // ===================== Autocorrelación para detectar pitch =====================
+    function autoCorrelate(buffer, sampleRate) {
+      const size = buffer.length;
+
+      // Calcular RMS para filtrar silencio/ruido muy bajo
+      let sumSquares = 0;
+      for (let i = 0; i < size; i++) {
+        const v = buffer[i];
+        sumSquares += v * v;
+      }
+      const rms = Math.sqrt(sumSquares / size);
+      if (rms < 0.01) return null; // demasiado silencioso
+
+      let bestOffset = -1;
+      let bestCorrelation = 0;
+
+      // Probamos distintos offsets (periodos)
+      const minOffset = 20;         // ~2 kHz
+      const maxOffset = size / 2;   // límite inferior en frecuencia
+
+      for (let offset = minOffset; offset < maxOffset; offset++) {
+        let correlation = 0;
+        for (let i = 0; i < maxOffset; i++) {
+          correlation += buffer[i] * buffer[i + offset];
+        }
+        correlation = correlation / maxOffset;
+
+        if (correlation > bestCorrelation) {
+          bestCorrelation = correlation;
+          bestOffset = offset;
+        }
+      }
+
+      if (bestOffset === -1) return null;
+
+      const frequency = sampleRate / bestOffset;
+      // Filtramos frecuencias fuera del rango típico de guitarra (aprox)
+      if (frequency < 70 || frequency > 1500) return null;
+
+      return frequency;
+    }
+
+    // ===================== Detección de acorde (muy aproximada) =====================
+    function detectChordFromSpectrum() {
+      if (!analyser || !audioContext) return null;
+
+      const binCount = analyser.frequencyBinCount;
+      const spectrum = new Uint8Array(binCount);
+      analyser.getByteFrequencyData(spectrum);
+
+      // Cogemos los picos más altos
+      const bins = [];
+      for (let i = 0; i < binCount; i++) {
+        bins.push({ index: i, value: spectrum[i] });
+      }
+      bins.sort((a, b) => b.value - a.value);
+
+      const noteClassesSet = new Set();
+      const maxPeaks = 12;
+      const amplitudeThreshold = 80; // 0-255
+
+      for (let i = 0; i < maxPeaks && i < bins.length; i++) {
+        const { index, value } = bins[i];
+        if (value < amplitudeThreshold) break;
+
+        const freq = (index * audioContext.sampleRate) / analyser.fftSize;
+        if (freq < 80 || freq > 2000) continue;
+
+        const midi = Math.round(69 + 12 * log2(freq / 440));
+        const noteClass = (midi % 12 + 12) % 12;
+        noteClassesSet.add(noteClass);
+      }
+
+      const noteClasses = Array.from(noteClassesSet);
+      if (noteClasses.length < 3) return null;
+
+      // Intentamos encajar el conjunto de notas con algún tipo de acorde
+      let best = null;
+
+      for (const rootClass of noteClasses) {
+        for (const type of CHORD_TYPES) {
+          const expected = type.intervals.map(iv => (rootClass + iv) % 12);
+          let present = 0;
+          for (const n of expected) {
+            if (noteClasses.includes(n)) present++;
+          }
+
+          if (present >= Math.max(3, expected.length - 1)) {
+            const coverage = present / expected.length;
+            const extras = noteClasses.length - present;
+            const quality = coverage - extras * 0.05;
+
+            if (!best || quality > best.quality) {
+              best = {
+                rootClass,
+                type,
+                quality,
+                noteClasses,
+                expected
+              };
+            }
+          }
+        }
+      }
+
+      if (!best) return null;
+
+      const rootName = NOTE_NAMES[best.rootClass];
+      const label = rootName + best.type.short;
+
+      // Notas presentes (únicamente las que encajan con el acorde)
+      const presentNotes = best.expected
+        .filter(n => best.noteClasses.includes(n))
+        .map(n => NOTE_NAMES[n]);
+
+      return {
+        label,
+        description: `${rootName} ${best.type.name.toLowerCase()}`,
+        presentNotes,
+        allNotes: best.noteClasses.map(n => NOTE_NAMES[n])
+      };
+    }
+
+    // ===================== Dibujo de forma de onda =====================
+    function drawWaveform(buffer) {
+      if (!waveCtx || !buffer) return;
+
+      const width = waveCanvas.width;
+      const height = waveCanvas.height;
+
+      waveCtx.clearRect(0, 0, width, height);
+
+      waveCtx.beginPath();
+      waveCtx.moveTo(0, height / 2);
+
+      const step = buffer.length / width;
+      for (let x = 0; x < width; x++) {
+        const idx = Math.floor(x * step);
+        const v = buffer[idx] || 0;
+        const y = height / 2 + v * (height / 2) * 0.9;
+        waveCtx.lineTo(x, y);
+      }
+
+      waveCtx.lineWidth = 1.2;
+      waveCtx.strokeStyle = "#9ca3af";
+      waveCtx.stroke();
+    }
+
+    // ===================== Loop de análisis =====================
+    function updateUIForSilence() {
+      noteDisplay.textContent = "—";
+      noteDetail.textContent = "No se detecta una nota clara.";
+      stringFretDisplay.textContent = "—";
+      stringFretDetail.textContent = "";
+      // No borramos el acorde: así puedes ver el último que detectó.
+    }
+
+    function analysisLoop() {
+      if (!running || !analyser || !audioContext) return;
+
+      if (!timeDomainBuffer || timeDomainBuffer.length !== analyser.fftSize) {
+        timeDomainBuffer = new Float32Array(analyser.fftSize);
+      }
+
+      analyser.getFloatTimeDomainData(timeDomainBuffer);
+
+      const freq = autoCorrelate(timeDomainBuffer, audioContext.sampleRate);
+      if (freq) {
+        const noteInfo = frequencyToNote(freq);
+        noteDisplay.textContent = `${noteInfo.name}`;
+        const centsStr = noteInfo.cents.toFixed(1);
+        noteDetail.textContent = `${freq.toFixed(1)} Hz · desviación ${centsStr} cents`;
+
+        const sf = guessStringAndFret(noteInfo.midi);
+        if (sf) {
+          const approx = sf.diff > 0.4 ? " (aprox)" : "";
+          stringFretDisplay.textContent = `${sf.string.name}, traste ${sf.fret}${approx}`;
+          const noteName = NOTE_NAMES[(sf.string.midi + sf.fret) % 12];
+          stringFretDetail.textContent = `Nota de la posición sugerida: ${noteName}`;
+        } else {
+          stringFretDisplay.textContent = "—";
+          stringFretDetail.textContent = "";
+        }
+      } else {
+        updateUIForSilence();
+      }
+
+      // Detección de acorde (muy básica)
+      const chord = detectChordFromSpectrum();
+      if (chord) {
+        chordDisplay.textContent = chord.label;
+        chordNotes.textContent =
+          `${chord.description} · notas detectadas: ${chord.allNotes.join(", ")}`;
+      }
+
+      drawWaveform(timeDomainBuffer);
+
+      requestAnimationFrame(analysisLoop);
+    }
+
+    // ===================== Control de audio (start/stop) =====================
+    async function startListening() {
+      if (running) return;
+      errorsEl.textContent = "";
+
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      } catch (e) {
+        errorsEl.textContent = "Tu navegador no soporta AudioContext.";
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+
+        mediaStream = stream;
+        const source = audioContext.createMediaStreamSource(stream);
+
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = timeDomainBufferSize * 2; // 4096
+        analyser.smoothingTimeConstant = 0.85;
+
+        source.connect(analyser);
+
+        running = true;
+        toggleButton.textContent = "Parar escucha";
+        statusDot.classList.remove("idle");
+        statusDot.classList.add("listening");
+        statusText.textContent = "Escuchando";
+
+        requestAnimationFrame(analysisLoop);
+      } catch (err) {
+        console.error(err);
+        errorsEl.textContent = "No se pudo acceder al micrófono: " + err.message;
+        if (audioContext) {
+          audioContext.close();
+          audioContext = null;
+        }
+        analyser = null;
+        mediaStream = null;
+        running = false;
+      }
+    }
+
+    function stopListening() {
+      if (!running) return;
+      running = false;
+
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      }
+
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+
+      analyser = null;
+      toggleButton.textContent = "Empezar a escuchar";
+      statusDot.classList.remove("listening");
+      statusDot.classList.add("idle");
+      statusText.textContent = "Parado";
+    }
+
+    toggleButton.addEventListener("click", () => {
+      if (running) {
+        stopListening();
+      } else {
+        startListening();
+      }
+    });
+
+    // Mensaje inicial
+    updateUIForSilence();
+  </script>
+</body>
+</html>
