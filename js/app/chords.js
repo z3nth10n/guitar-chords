@@ -388,20 +388,36 @@
     }
 
     const CHORD_PATTERNS = [
-      { name: "chord_major",               suffix: "",      intervals: [0, 4, 7] },
-      { name: "chord_minor",               suffix: "m",     intervals: [0, 3, 7] },
-      { name: "chord_dim",          suffix: "dim",   intervals: [0, 3, 6] },
-      { name: "chord_aug",           suffix: "aug",   intervals: [0, 4, 8] },
+      { name: "chord_major",       suffix: "",      intervals: [0, 4, 7] },
+      { name: "chord_minor",       suffix: "m",     intervals: [0, 3, 7] },
+      { name: "chord_5",           suffix: "5",     intervals: [0, 7] },
+      { name: "chord_dim",         suffix: "dim",   intervals: [0, 3, 6] },
+      { name: "chord_aug",         suffix: "aug",   intervals: [0, 4, 8] },
       { name: "chord_sus2",        suffix: "sus2",  intervals: [0, 2, 7] },
       { name: "chord_sus4",        suffix: "sus4",  intervals: [0, 5, 7] },
-      { name: "chord_maj7",             suffix: "maj7",  intervals: [0, 4, 7, 11] },
-      { name: "chord_m7",             suffix: "m7",    intervals: [0, 3, 7, 10] },
-      { name: "chord_dom7",         suffix: "7",     intervals: [0, 4, 7, 10] },
-      { name: "chord_m7b5",    suffix: "m7b5",  intervals: [0, 3, 6, 10] },
+      { name: "chord_maj7",        suffix: "maj7",  intervals: [0, 4, 7, 11] },
+      { name: "chord_m7",          suffix: "m7",    intervals: [0, 3, 7, 10] },
+      { name: "chord_dom7",        suffix: "7",     intervals: [0, 4, 7, 10] },
+      { name: "chord_m7b5",        suffix: "m7b5",  intervals: [0, 3, 6, 10] },
       { name: "chord_dim7",        suffix: "dim7",  intervals: [0, 3, 6, 9] },
-      { name: "chord_mmaj7",       suffix: "mMaj7", intervals: [0, 3, 7, 11] },
-      { name: "chord_maj6",             suffix: "6",     intervals: [0, 4, 7, 9] },
-      { name: "chord_m6",             suffix: "m6",    intervals: [0, 3, 7, 9] }
+      { name: "chord_mmaj7",       suffix: "m(maj7)", intervals: [0, 3, 7, 11] },
+      { name: "chord_maj6",        suffix: "6",     intervals: [0, 4, 7, 9] },
+      { name: "chord_m6",          suffix: "m6",    intervals: [0, 3, 7, 9] },
+      { name: "chord_9",           suffix: "9",     intervals: [0, 4, 7, 10, 2] },
+      { name: "chord_maj9",        suffix: "maj9",  intervals: [0, 4, 7, 11, 2] },
+      { name: "chord_m9",          suffix: "m9",    intervals: [0, 3, 7, 10, 2] },
+      { name: "chord_11",          suffix: "11",    intervals: [0, 4, 7, 10, 2, 5] },
+      { name: "chord_m11",         suffix: "m11",   intervals: [0, 3, 7, 10, 2, 5] },
+      { name: "chord_13",          suffix: "13",    intervals: [0, 4, 7, 10, 2, 5, 9] },
+      { name: "chord_maj13",       suffix: "maj13", intervals: [0, 4, 7, 11, 2, 9] },
+      { name: "chord_m13",         suffix: "m13",   intervals: [0, 3, 7, 10, 2, 5, 9] },
+      { name: "chord_6_9",         suffix: "6/9",   intervals: [0, 4, 7, 9, 2] },
+      { name: "chord_7sus4",       suffix: "7sus4", intervals: [0, 5, 7, 10] },
+      { name: "chord_7b5",         suffix: "7b5",   intervals: [0, 4, 6, 10] },
+      { name: "chord_7b9",         suffix: "7b9",   intervals: [0, 4, 7, 10, 1] },
+      { name: "chord_9sus4",       suffix: "9sus4", intervals: [0, 5, 7, 10, 2] },
+      { name: "chord_add9",        suffix: "add9",  intervals: [0, 4, 7, 2] },
+      { name: "chord_aug9",        suffix: "aug9",  intervals: [0, 4, 8, 10, 2] }
     ];
 
     function detectChord(notePcs) {

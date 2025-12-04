@@ -7,169 +7,151 @@ const NOTES_LATIN = ['Do', 'Do#', 'Re', 'Re#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#',
 
 // Finger mapping: 1=Index (Yellow), 2=Middle (Purple), 3=Ring (Blue), 4=Pinky (Orange)
 // Frets: -1 = Muted (x), 0 = Open (o), >0 = Fret number
-const CHORD_DATA = {
-  'C': {
-    'Major': [
-      { frets: [-1, 3, 2, 0, 1, 0], fingers: [0, 3, 2, 0, 1, 0] }, // Open C
-      { frets: [8, 10, 10, 9, 8, 8], fingers: [1, 3, 4, 2, 1, 1], bar: { fret: 8, finger: 1, strings: [1, 6] } } // Barre C (E shape)
-    ],
-    'Minor': [
-      { frets: [-1, 3, 5, 5, 4, 3], fingers: [0, 1, 3, 4, 2, 1], bar: { fret: 3, finger: 1, strings: [1, 6] } },
-      { frets: [8, 10, 10, 8, 8, 8], fingers: [1, 3, 4, 1, 1, 1], bar: { fret: 8, finger: 1, strings: [1, 6] } }
-    ],
-    '7': [
-      { frets: [-1, 3, 2, 3, 1, 0], fingers: [0, 3, 2, 4, 1, 0] },
-      { frets: [8, 10, 8, 9, 8, 8], fingers: [1, 3, 1, 2, 1, 1], bar: { fret: 8, finger: 1, strings: [1, 6] } }
-    ]
-  },
-  'C#': {
-    'Major': [
-      { frets: [-1, 4, 6, 6, 6, 4], fingers: [0, 1, 2, 3, 4, 1], bar: { fret: 4, finger: 1, strings: [1, 6] } },
-      { frets: [9, 11, 11, 10, 9, 9], fingers: [1, 3, 4, 2, 1, 1], bar: { fret: 9, finger: 1, strings: [1, 6] } }
-    ],
-    'Minor': [
-      { frets: [-1, 4, 6, 6, 5, 4], fingers: [0, 1, 3, 4, 2, 1], bar: { fret: 4, finger: 1, strings: [1, 6] } },
-      { frets: [9, 11, 11, 9, 9, 9], fingers: [1, 3, 4, 1, 1, 1], bar: { fret: 9, finger: 1, strings: [1, 6] } }
-    ],
-    '7': [
-      { frets: [-1, 4, 6, 4, 6, 4], fingers: [0, 1, 3, 1, 4, 1], bar: { fret: 4, finger: 1, strings: [1, 6] } }
-    ]
-  },
-  'D': {
-    'Major': [
-      { frets: [-1, -1, 0, 2, 3, 2], fingers: [0, 0, 0, 1, 3, 2] },
-      { frets: [-1, 5, 7, 7, 7, 5], fingers: [0, 1, 2, 3, 4, 1], bar: { fret: 5, finger: 1, strings: [1, 6] } }
-    ],
-    'Minor': [
-      { frets: [-1, -1, 0, 2, 3, 1], fingers: [0, 0, 0, 2, 3, 1] },
-      { frets: [-1, 5, 7, 7, 6, 5], fingers: [0, 1, 3, 4, 2, 1], bar: { fret: 5, finger: 1, strings: [1, 6] } }
-    ],
-    '7': [
-      { frets: [-1, -1, 0, 2, 1, 2], fingers: [0, 0, 0, 2, 1, 3] },
-      { frets: [-1, 5, 7, 5, 7, 5], fingers: [0, 1, 3, 1, 4, 1], bar: { fret: 5, finger: 1, strings: [1, 6] } }
-    ]
-  },
-  'D#': {
-    'Major': [
-      { frets: [-1, 6, 8, 8, 8, 6], fingers: [0, 1, 2, 3, 4, 1], bar: { fret: 6, finger: 1, strings: [1, 6] } },
-      { frets: [11, 13, 13, 12, 11, 11], fingers: [1, 3, 4, 2, 1, 1], bar: { fret: 11, finger: 1, strings: [1, 6] } }
-    ],
-    'Minor': [
-      { frets: [-1, 6, 8, 8, 7, 6], fingers: [0, 1, 3, 4, 2, 1], bar: { fret: 6, finger: 1, strings: [1, 6] } },
-      { frets: [11, 13, 13, 11, 11, 11], fingers: [1, 3, 4, 1, 1, 1], bar: { fret: 11, finger: 1, strings: [1, 6] } }
-    ],
-    '7': [
-      { frets: [-1, 6, 8, 6, 8, 6], fingers: [0, 1, 3, 1, 4, 1], bar: { fret: 6, finger: 1, strings: [1, 6] } }
-    ]
-  },
-  'E': {
-    'Major': [
-      { frets: [0, 2, 2, 1, 0, 0], fingers: [0, 2, 3, 1, 0, 0] },
-      { frets: [-1, 7, 9, 9, 9, 7], fingers: [0, 1, 2, 3, 4, 1], bar: { fret: 7, finger: 1, strings: [1, 6] } }
-    ],
-    'Minor': [
-      { frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0] },
-      { frets: [-1, 7, 9, 9, 8, 7], fingers: [0, 1, 3, 4, 2, 1], bar: { fret: 7, finger: 1, strings: [1, 6] } }
-    ],
-    '7': [
-      { frets: [0, 2, 0, 1, 0, 0], fingers: [0, 2, 0, 1, 0, 0] },
-      { frets: [-1, 7, 9, 7, 9, 7], fingers: [0, 1, 3, 1, 4, 1], bar: { fret: 7, finger: 1, strings: [1, 6] } }
-    ]
-  },
-  'F': {
-    'Major': [
-      { frets: [1, 3, 3, 2, 1, 1], fingers: [1, 3, 4, 2, 1, 1], bar: { fret: 1, finger: 1, strings: [1, 6] } },
-      { frets: [-1, 8, 10, 10, 10, 8], fingers: [0, 1, 2, 3, 4, 1], bar: { fret: 8, finger: 1, strings: [1, 6] } }
-    ],
-    'Minor': [
-      { frets: [1, 3, 3, 1, 1, 1], fingers: [1, 3, 4, 1, 1, 1], bar: { fret: 1, finger: 1, strings: [1, 6] } },
-      { frets: [-1, 8, 10, 10, 9, 8], fingers: [0, 1, 3, 4, 2, 1], bar: { fret: 8, finger: 1, strings: [1, 6] } }
-    ],
-    '7': [
-      { frets: [1, 3, 1, 2, 1, 1], fingers: [1, 3, 1, 2, 1, 1], bar: { fret: 1, finger: 1, strings: [1, 6] } }
-    ]
-  },
-  'F#': {
-    'Major': [
-      { frets: [2, 4, 4, 3, 2, 2], fingers: [1, 3, 4, 2, 1, 1], bar: { fret: 2, finger: 1, strings: [1, 6] } },
-      { frets: [-1, 9, 11, 11, 11, 9], fingers: [0, 1, 2, 3, 4, 1], bar: { fret: 9, finger: 1, strings: [1, 6] } }
-    ],
-    'Minor': [
-      { frets: [2, 4, 4, 2, 2, 2], fingers: [1, 3, 4, 1, 1, 1], bar: { fret: 2, finger: 1, strings: [1, 6] } },
-      { frets: [-1, 9, 11, 11, 10, 9], fingers: [0, 1, 3, 4, 2, 1], bar: { fret: 9, finger: 1, strings: [1, 6] } }
-    ],
-    '7': [
-      { frets: [2, 4, 2, 3, 2, 2], fingers: [1, 3, 1, 2, 1, 1], bar: { fret: 2, finger: 1, strings: [1, 6] } }
-    ]
-  },
-  'G': {
-    'Major': [
-      { frets: [3, 2, 0, 0, 0, 3], fingers: [2, 1, 0, 0, 0, 3] },
-      { frets: [3, 5, 5, 4, 3, 3], fingers: [1, 3, 4, 2, 1, 1], bar: { fret: 3, finger: 1, strings: [1, 6] } }
-    ],
-    'Minor': [
-      { frets: [3, 5, 5, 3, 3, 3], fingers: [1, 3, 4, 1, 1, 1], bar: { fret: 3, finger: 1, strings: [1, 6] } },
-      { frets: [-1, 10, 12, 12, 11, 10], fingers: [0, 1, 3, 4, 2, 1], bar: { fret: 10, finger: 1, strings: [1, 6] } }
-    ],
-    '7': [
-      { frets: [3, 2, 0, 0, 0, 1], fingers: [3, 2, 0, 0, 0, 1] },
-      { frets: [3, 5, 3, 4, 3, 3], fingers: [1, 3, 1, 2, 1, 1], bar: { fret: 3, finger: 1, strings: [1, 6] } }
-    ]
-  },
-  'G#': {
-    'Major': [
-      { frets: [4, 6, 6, 5, 4, 4], fingers: [1, 3, 4, 2, 1, 1], bar: { fret: 4, finger: 1, strings: [1, 6] } }
-    ],
-    'Minor': [
-      { frets: [4, 6, 6, 4, 4, 4], fingers: [1, 3, 4, 1, 1, 1], bar: { fret: 4, finger: 1, strings: [1, 6] } }
-    ],
-    '7': [
-      { frets: [4, 6, 4, 5, 4, 4], fingers: [1, 3, 1, 2, 1, 1], bar: { fret: 4, finger: 1, strings: [1, 6] } }
-    ]
-  },
-  'A': {
-    'Major': [
-      { frets: [-1, 0, 2, 2, 2, 0], fingers: [0, 0, 1, 2, 3, 0] },
-      { frets: [5, 7, 7, 6, 5, 5], fingers: [1, 3, 4, 2, 1, 1], bar: { fret: 5, finger: 1, strings: [1, 6] } }
-    ],
-    'Minor': [
-      { frets: [-1, 0, 2, 2, 1, 0], fingers: [0, 0, 2, 3, 1, 0] },
-      { frets: [5, 7, 7, 5, 5, 5], fingers: [1, 3, 4, 1, 1, 1], bar: { fret: 5, finger: 1, strings: [1, 6] } }
-    ],
-    '7': [
-      { frets: [-1, 0, 2, 0, 2, 0], fingers: [0, 0, 2, 0, 3, 0] },
-      { frets: [5, 7, 5, 6, 5, 5], fingers: [1, 3, 1, 2, 1, 1], bar: { fret: 5, finger: 1, strings: [1, 6] } }
-    ]
-  },
-  'A#': {
-    'Major': [
-      { frets: [-1, 1, 3, 3, 3, 1], fingers: [0, 1, 2, 3, 4, 1], bar: { fret: 1, finger: 1, strings: [1, 6] } },
-      { frets: [6, 8, 8, 7, 6, 6], fingers: [1, 3, 4, 2, 1, 1], bar: { fret: 6, finger: 1, strings: [1, 6] } }
-    ],
-    'Minor': [
-      { frets: [-1, 1, 3, 3, 2, 1], fingers: [0, 1, 3, 4, 2, 1], bar: { fret: 1, finger: 1, strings: [1, 6] } },
-      { frets: [6, 8, 8, 6, 6, 6], fingers: [1, 3, 4, 1, 1, 1], bar: { fret: 6, finger: 1, strings: [1, 6] } }
-    ],
-    '7': [
-      { frets: [-1, 1, 3, 1, 3, 1], fingers: [0, 1, 3, 1, 4, 1], bar: { fret: 1, finger: 1, strings: [1, 6] } },
-      { frets: [6, 8, 6, 7, 6, 6], fingers: [1, 3, 1, 2, 1, 1], bar: { fret: 6, finger: 1, strings: [1, 6] } }
-    ]
-  },
-  'B': {
-    'Major': [
-      { frets: [-1, 2, 4, 4, 4, 2], fingers: [0, 1, 2, 3, 4, 1], bar: { fret: 2, finger: 1, strings: [1, 6] } },
-      { frets: [7, 9, 9, 8, 7, 7], fingers: [1, 3, 4, 2, 1, 1], bar: { fret: 7, finger: 1, strings: [1, 6] } }
-    ],
-    'Minor': [
-      { frets: [-1, 2, 4, 4, 3, 2], fingers: [0, 1, 3, 4, 2, 1], bar: { fret: 2, finger: 1, strings: [1, 6] } },
-      { frets: [7, 9, 9, 7, 7, 7], fingers: [1, 3, 4, 1, 1, 1], bar: { fret: 7, finger: 1, strings: [1, 6] } }
-    ],
-    '7': [
-      { frets: [-1, 2, 4, 2, 4, 2], fingers: [0, 1, 3, 1, 4, 1], bar: { fret: 2, finger: 1, strings: [1, 6] } },
-      { frets: [7, 9, 7, 8, 7, 7], fingers: [1, 3, 1, 2, 1, 1], bar: { fret: 7, finger: 1, strings: [1, 6] } }
-    ]
-  }
+
+// --- Chord Shapes Definition ---
+const CHORD_SHAPES = {
+  'Major': [
+    { rootString: 6, offsets: [0, 2, 2, 1, 0, 0], fingers: [1, 3, 4, 2, 1, 1], bar: { finger: 1, strings: [1, 6] } },
+    { rootString: 5, offsets: [-1, 0, 2, 2, 2, 0], fingers: [0, 1, 2, 3, 4, 1], bar: { finger: 1, strings: [1, 5] } }
+  ],
+  'Minor': [
+    { rootString: 6, offsets: [0, 2, 2, 0, 0, 0], fingers: [1, 3, 4, 1, 1, 1], bar: { finger: 1, strings: [1, 6] } },
+    { rootString: 5, offsets: [-1, 0, 2, 2, 1, 0], fingers: [0, 1, 3, 4, 2, 1], bar: { finger: 1, strings: [1, 5] } }
+  ],
+  '7': [
+    { rootString: 6, offsets: [0, 2, 0, 1, 0, 0], fingers: [1, 3, 1, 2, 1, 1], bar: { finger: 1, strings: [1, 6] } },
+    { rootString: 5, offsets: [-1, 0, 2, 0, 2, 0], fingers: [0, 1, 3, 1, 4, 1], bar: { finger: 1, strings: [1, 5] } }
+  ],
+  '5': [
+    { rootString: 6, offsets: [0, 2, 2, -1, -1, -1], fingers: [1, 3, 4, 0, 0, 0] },
+    { rootString: 5, offsets: [-1, 0, 2, 2, -1, -1], fingers: [0, 1, 3, 4, 0, 0] }
+  ],
+  '6': [
+    { rootString: 6, offsets: [0, 2, 2, 1, 2, 0], fingers: [1, 3, 4, 2, 4, 1], bar: { finger: 1, strings: [1, 6] } },
+    { rootString: 5, offsets: [-1, 0, 2, 2, 2, 2], fingers: [0, 1, 2, 2, 2, 2], bar: { finger: 1, strings: [1, 5] } }
+  ],
+  'm6': [
+    { rootString: 6, offsets: [0, 2, 2, 0, 2, 0], fingers: [1, 3, 4, 1, 4, 1], bar: { finger: 1, strings: [1, 6] } },
+    { rootString: 5, offsets: [-1, 0, 2, 2, 1, 2], fingers: [0, 1, 3, 4, 2, 4], bar: { finger: 1, strings: [1, 5] } }
+  ],
+  'maj7': [
+    { rootString: 6, offsets: [0, 2, 1, 1, 0, 0], fingers: [1, 3, 2, 4, 1, 1], bar: { finger: 1, strings: [1, 6] } },
+    { rootString: 5, offsets: [-1, 0, 2, 1, 2, 0], fingers: [0, 1, 3, 2, 4, 1], bar: { finger: 1, strings: [1, 5] } }
+  ],
+  'm7': [
+    { rootString: 6, offsets: [0, 2, 0, 0, 0, 0], fingers: [1, 3, 1, 1, 1, 1], bar: { finger: 1, strings: [1, 6] } },
+    { rootString: 5, offsets: [-1, 0, 2, 0, 1, 0], fingers: [0, 1, 3, 1, 2, 1], bar: { finger: 1, strings: [1, 5] } }
+  ],
+  'm7b5': [
+    { rootString: 6, offsets: [0, 1, 2, 0, 3, -1], fingers: [1, 2, 4, 1, 4, 0], bar: { finger: 1, strings: [1, 6] } },
+    { rootString: 5, offsets: [-1, 0, 1, 0, 1, -1], fingers: [0, 1, 2, 1, 3, 0], bar: { finger: 1, strings: [2, 4] } }
+  ],
+  'dim7': [
+    { rootString: 6, offsets: [0, -1, -1, -1, -1, -1], fingers: [1, 0, 0, 0, 0, 0] },
+    { rootString: 5, offsets: [-1, 0, 1, -1, 1, -1], fingers: [0, 2, 3, 1, 4, 0] }
+  ],
+  'm(maj7)': [
+    { rootString: 5, offsets: [-1, 0, 2, 1, 1, 0], fingers: [0, 1, 3, 2, 2, 1], bar: { finger: 1, strings: [1, 5] } }
+  ],
+  '9': [
+    { rootString: 5, offsets: [-1, 0, -1, 0, 0, 0], fingers: [0, 2, 1, 3, 3, 3], bar: { finger: 3, strings: [1, 3] } }
+  ],
+  'maj9': [
+    { rootString: 5, offsets: [-1, 0, -1, 1, 0, -1], fingers: [0, 2, 1, 4, 3, 0] }
+  ],
+  'm9': [
+    { rootString: 5, offsets: [-1, 0, -2, 0, 0, -1], fingers: [0, 2, 1, 3, 3, 0] }
+  ],
+  '11': [
+    { rootString: 6, offsets: [0, 0, 0, 0, 0, 0], fingers: [1, 1, 1, 1, 1, 1], bar: { finger: 1, strings: [1, 6] } }
+  ],
+  'm11': [
+    { rootString: 6, offsets: [0, 2, 0, 0, 0, 0], fingers: [1, 3, 1, 1, 1, 1], bar: { finger: 1, strings: [1, 6] } }
+  ],
+  '13': [
+    { rootString: 6, offsets: [0, -1, 0, 1, 2, 2], fingers: [1, 0, 2, 3, 4, 4] }
+  ],
+  'maj13': [
+    { rootString: 6, offsets: [0, -1, 1, 1, 2, -1], fingers: [1, 0, 2, 3, 4, 0] }
+  ],
+  'm13': [
+    { rootString: 6, offsets: [0, -1, 0, 0, 2, -1], fingers: [1, 0, 2, 2, 4, 0] }
+  ],
+  '6/9': [
+    { rootString: 5, offsets: [-1, 0, -1, -1, 0, 0], fingers: [0, 2, 1, 1, 3, 4], bar: { finger: 1, strings: [3, 4] } }
+  ],
+  'sus2': [
+    { rootString: 5, offsets: [-1, 0, 2, 2, 0, 0], fingers: [0, 1, 3, 4, 1, 1], bar: { finger: 1, strings: [1, 5] } }
+  ],
+  'sus4': [
+    { rootString: 6, offsets: [0, 2, 2, 2, 0, 0], fingers: [1, 3, 4, 4, 1, 1], bar: { finger: 1, strings: [1, 6] } },
+    { rootString: 5, offsets: [-1, 0, 2, 2, 3, 0], fingers: [0, 1, 2, 3, 4, 1], bar: { finger: 1, strings: [1, 5] } }
+  ],
+  '7sus4': [
+    { rootString: 6, offsets: [0, 2, 0, 2, 0, 0], fingers: [1, 3, 1, 4, 1, 1], bar: { finger: 1, strings: [1, 6] } },
+    { rootString: 5, offsets: [-1, 0, 2, 0, 3, 0], fingers: [0, 1, 2, 1, 4, 1], bar: { finger: 1, strings: [1, 5] } }
+  ],
+  '7b5': [
+    { rootString: 6, offsets: [0, -1, 0, 1, -1, -1], fingers: [2, 0, 3, 4, 0, 0] }
+  ],
+  '7b9': [
+    { rootString: 5, offsets: [-1, 0, -1, 0, -1, -1], fingers: [0, 2, 1, 3, 1, 0] }
+  ],
+  '9sus4': [
+    { rootString: 5, offsets: [-1, 0, 0, 0, 0, 0], fingers: [0, 1, 1, 1, 1, 1], bar: { finger: 1, strings: [1, 5] } }
+  ],
+  'add9': [
+    { rootString: 6, offsets: [0, 2, 4, 1, 0, 0], fingers: [1, 2, 4, 1, 1, 1], bar: { finger: 1, strings: [1, 6] } },
+    { rootString: 5, offsets: [-1, 0, 2, 2, 0, 0], fingers: [0, 1, 3, 4, 1, 1], bar: { finger: 1, strings: [1, 5] } }
+  ],
+  'aug9': [
+    { rootString: 5, offsets: [-1, 0, -1, 0, 1, -1], fingers: [0, 2, 1, 3, 4, 0] }
+  ]
 };
+
+function generateChordData() {
+  const data = {};
+  NOTES_SHARP.forEach((root, rootIndex) => {
+    data[root] = {};
+    
+    // Calculate root fret on E string (String 6)
+    // E is index 4. Fret = (index - 4 + 12) % 12. 
+    let rootFretE = (rootIndex - 4 + 12) % 12;
+    
+    // Calculate root fret on A string (String 5)
+    // A is index 9. Fret = (index - 9 + 12) % 12.
+    let rootFretA = (rootIndex - 9 + 12) % 12;
+
+    for (const [type, shapes] of Object.entries(CHORD_SHAPES)) {
+      data[root][type] = [];
+      
+      shapes.forEach(shape => {
+        let baseFret = 0;
+        if (shape.rootString === 6) baseFret = rootFretE;
+        if (shape.rootString === 5) baseFret = rootFretA;
+        
+        const frets = shape.offsets.map(offset => {
+          if (offset === -1) return -1;
+          return baseFret + offset;
+        });
+        
+        let bar = null;
+        if (shape.bar) {
+          bar = { ...shape.bar, fret: baseFret };
+        }
+
+        data[root][type].push({
+          frets: frets,
+          fingers: shape.fingers,
+          bar: bar
+        });
+      });
+    }
+  });
+  return data;
+}
+
+const CHORD_DATA = generateChordData();
 
 // --- State ---
 const state = {
@@ -316,7 +298,7 @@ function renderRootPicker() {
 }
 
 function renderTypePicker() {
-  const types = ['Major', 'Minor', '7']; // Add more as needed
+  const types = Object.keys(CHORD_SHAPES);
   typePicker.innerHTML = '';
   
   types.forEach(t => {

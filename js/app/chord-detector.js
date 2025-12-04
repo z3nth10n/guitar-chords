@@ -24,6 +24,7 @@
     const CHORD_TYPES = [
       { key: "chord_major", short: "", intervals: [0, 4, 7] },
       { key: "chord_minor", short: "m", intervals: [0, 3, 7] },
+      { key: "chord_5", short: "5", intervals: [0, 7] },
       { key: "chord_dom7", short: "7", intervals: [0, 4, 7, 10] },
       { key: "chord_maj7", short: "maj7", intervals: [0, 4, 7, 11] },
       { key: "chord_m7", short: "m7", intervals: [0, 3, 7, 10] },
@@ -31,6 +32,24 @@
       { key: "chord_aug", short: "aug", intervals: [0, 4, 8] },
       { key: "chord_sus2", short: "sus2", intervals: [0, 2, 7] },
       { key: "chord_sus4", short: "sus4", intervals: [0, 5, 7] },
+      { key: "chord_maj6", short: "6", intervals: [0, 4, 7, 9] },
+      { key: "chord_m6", short: "m6", intervals: [0, 3, 7, 9] },
+      { key: "chord_9", short: "9", intervals: [0, 4, 7, 10, 2] },
+      { key: "chord_maj9", short: "maj9", intervals: [0, 4, 7, 11, 2] },
+      { key: "chord_m9", short: "m9", intervals: [0, 3, 7, 10, 2] },
+      { key: "chord_11", short: "11", intervals: [0, 4, 7, 10, 2, 5] },
+      { key: "chord_m11", short: "m11", intervals: [0, 3, 7, 10, 2, 5] },
+      { key: "chord_13", short: "13", intervals: [0, 4, 7, 10, 2, 5, 9] },
+      { key: "chord_maj13", short: "maj13", intervals: [0, 4, 7, 11, 2, 9] },
+      { key: "chord_m13", short: "m13", intervals: [0, 3, 7, 10, 2, 5, 9] },
+      { key: "chord_mmaj7", short: "m(maj7)", intervals: [0, 3, 7, 11] },
+      { key: "chord_6_9", short: "6/9", intervals: [0, 4, 7, 9, 2] },
+      { key: "chord_7sus4", short: "7sus4", intervals: [0, 5, 7, 10] },
+      { key: "chord_7b5", short: "7b5", intervals: [0, 4, 6, 10] },
+      { key: "chord_7b9", short: "7b9", intervals: [0, 4, 7, 10, 1] },
+      { key: "chord_9sus4", short: "9sus4", intervals: [0, 5, 7, 10, 2] },
+      { key: "chord_add9", short: "add9", intervals: [0, 4, 7, 2] },
+      { key: "chord_aug9", short: "aug9", intervals: [0, 4, 8, 10, 2] }
     ];
 
     // ===================== Audio State =====================
