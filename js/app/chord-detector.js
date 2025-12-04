@@ -421,21 +421,61 @@
             window.setTranslationPrefix('chord-detector/chord-detector');
         }
 
+        const notationSelect = document.getElementById("notationSelect");
+
         // Detect browser language
         const browserLang = navigator.language || navigator.userLanguage || 'en';
-        const userLang = browserLang.startsWith('es') ? 'es' : 'en';
+        let userLang = browserLang.startsWith('es') ? 'es' : 'en';
         
+        // Load saved language preference
+        const savedLang = localStorage.getItem("chordDetector_selectedLang");
+        if (savedLang) {
+            userLang = savedLang;
+        }
+
+        // Load saved notation preference
+        const savedNotation = localStorage.getItem("chordDetector_selectedNotation");
+        if (savedNotation) {
+            currentNotation = savedNotation;
+        } else {
+            // Default notation based on language
+            if (userLang === 'en') {
+                currentNotation = 'anglo';
+            } else {
+                currentNotation = 'latin';
+            }
+        }
+
+        if (notationSelect) {
+            notationSelect.value = currentNotation;
+            notationSelect.addEventListener("change", (e) => {
+                currentNotation = e.target.value;
+                localStorage.setItem("chordDetector_selectedNotation", currentNotation);
+                // Refresh UI if needed (e.g. if we are displaying a note)
+                // We don't have a specific function to refresh all text, but the loop will pick it up.
+                // However, if we are paused, we might want to update the static text.
+                if (!running) {
+                    // Force update of last detected note if possible, or just wait for next loop
+                }
+            });
+        }
+
         if (langSelect) {
             langSelect.value = userLang;
             langSelect.addEventListener("change", (e) => {
                 const newLang = e.target.value;
+                localStorage.setItem("chordDetector_selectedLang", newLang);
                 
-                // Auto-switch notation
+                // Auto-switch notation only if user hasn't explicitly saved a preference? 
+                // Or just follow the pattern: language change -> update notation default.
+                // Let's update it to match the language default, but update the selector too.
                 if (newLang === 'en') {
                     currentNotation = 'anglo';
                 } else if (newLang === 'es') {
                     currentNotation = 'latin';
                 }
+                if (notationSelect) notationSelect.value = currentNotation;
+                localStorage.setItem("chordDetector_selectedNotation", currentNotation);
 
                 if (window.loadTranslations) {
                     window.loadTranslations(newLang, () => {
@@ -451,13 +491,6 @@
                     });
                 }
             });
-        }
-
-        // Set initial notation
-        if (userLang === 'en') {
-            currentNotation = 'anglo';
-        } else {
-            currentNotation = 'latin';
         }
 
         // Load translations

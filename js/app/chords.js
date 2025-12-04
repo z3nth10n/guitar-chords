@@ -72,21 +72,42 @@
 
       // Detect browser language
       const browserLang = navigator.language || navigator.userLanguage || 'en';
-      const userLang = browserLang.startsWith('es') ? 'es' : 'en';
+      let userLang = browserLang.startsWith('es') ? 'es' : 'en';
+
+      // Load saved preferences
+      const savedTuning = localStorage.getItem("chords_selectedTuning");
+      const savedNotation = localStorage.getItem("chords_selectedNotation");
+      const savedLang = localStorage.getItem("chords_selectedLang");
+
+      if (savedLang) {
+          userLang = savedLang;
+      }
       langSelect.value = userLang;
 
-      // Sync notation with default language
-      if (userLang === 'en') {
-        notationSelect.value = 'anglo';
-        currentNotation = 'anglo';
-      } else if (userLang === 'es') {
-        notationSelect.value = 'latin';
-        currentNotation = 'latin';
+      // Sync notation with default language or saved preference
+      if (savedNotation) {
+          notationSelect.value = savedNotation;
+          currentNotation = savedNotation;
+      } else {
+          if (userLang === 'en') {
+            notationSelect.value = 'anglo';
+            currentNotation = 'anglo';
+          } else if (userLang === 'es') {
+            notationSelect.value = 'latin';
+            currentNotation = 'latin';
+          }
       }
 
       buildStringTuningOptions();
       customTunings = loadCustomTunings();
-      populateTuningSelect("builtin::tuning_e_std");
+      
+      if (savedTuning) {
+          populateTuningSelect(savedTuning);
+          tuningSelect.value = savedTuning;
+      } else {
+          populateTuningSelect("builtin::tuning_e_std");
+      }
+      
       applySelectedTuning();
       
       // Use window.loadTranslations to ensure it's found
@@ -96,8 +117,11 @@
 
       langSelect.addEventListener("change", (e) => {
         const newLang = e.target.value;
+        localStorage.setItem("chords_selectedLang", newLang);
 
-        // Auto-switch notation based on language
+        // Auto-switch notation based on language ONLY if not manually overridden (optional, but user asked to save notation)
+        // Actually, if user changes language, we usually switch notation defaults, but if they have a saved notation preference, maybe we should respect it?
+        // The current behavior switches notation on language change. I will keep it but also update the saved notation.
         if (newLang === 'en') {
             notationSelect.value = 'anglo';
             currentNotation = 'anglo';
@@ -105,6 +129,7 @@
             notationSelect.value = 'latin';
             currentNotation = 'latin';
         }
+        localStorage.setItem("chords_selectedNotation", currentNotation);
 
         if (window.loadTranslations) {
             window.loadTranslations(newLang, updateChordUI);
@@ -113,11 +138,13 @@
 
       notationSelect.addEventListener("change", (e) => {
         currentNotation = e.target.value;
+        localStorage.setItem("chords_selectedNotation", currentNotation);
         refreshStringTuningOptionLabels();
         updateStringNotes();
       });
 
       tuningSelect.addEventListener("change", () => {
+        localStorage.setItem("chords_selectedTuning", tuningSelect.value);
         applySelectedTuning();
         clearFretInputs();
         clearMessages();
