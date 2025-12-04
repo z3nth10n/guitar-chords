@@ -65,8 +65,9 @@
         }
       }
 
-      // Default language to English
-      const userLang = 'en';
+      // Detect browser language
+      const browserLang = navigator.language || navigator.userLanguage || 'en';
+      const userLang = browserLang.startsWith('es') ? 'es' : 'en';
       langSelect.value = userLang;
 
       // Sync notation with default language
