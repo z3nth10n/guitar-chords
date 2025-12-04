@@ -282,33 +282,9 @@
         <div>Nota</div>
       </div>
 
-      <!-- String 6 -->
-      <div class="string-row" data-string="6">
-        <div class="string-label">Cuerda 6</div>
-        <select class="string-tuning"></select>
-        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
-        <input class="string-note" type="text" readonly />
-      </div>
-
-      <!-- String 5 -->
-      <div class="string-row" data-string="5">
-        <div class="string-label">Cuerda 5</div>
-        <select class="string-tuning"></select>
-        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
-        <input class="string-note" type="text" readonly />
-      </div>
-
-      <!-- String 4 -->
-      <div class="string-row" data-string="4">
-        <div class="string-label">Cuerda 4</div>
-        <select class="string-tuning"></select>
-        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
-        <input class="string-note" type="text" readonly />
-      </div>
-
-      <!-- String 3 -->
-      <div class="string-row" data-string="3">
-        <div class="string-label">Cuerda 3</div>
+      <!-- String 1 -->
+      <div class="string-row" data-string="1">
+        <div class="string-label">Cuerda 1</div>
         <select class="string-tuning"></select>
         <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
         <input class="string-note" type="text" readonly />
@@ -322,9 +298,33 @@
         <input class="string-note" type="text" readonly />
       </div>
 
-      <!-- String 1 -->
-      <div class="string-row" data-string="1">
-        <div class="string-label">Cuerda 1</div>
+      <!-- String 3 -->
+      <div class="string-row" data-string="3">
+        <div class="string-label">Cuerda 3</div>
+        <select class="string-tuning"></select>
+        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
+        <input class="string-note" type="text" readonly />
+      </div>
+
+      <!-- String 4 -->
+      <div class="string-row" data-string="4">
+        <div class="string-label">Cuerda 4</div>
+        <select class="string-tuning"></select>
+        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
+        <input class="string-note" type="text" readonly />
+      </div>
+
+      <!-- String 5 -->
+      <div class="string-row" data-string="5">
+        <div class="string-label">Cuerda 5</div>
+        <select class="string-tuning"></select>
+        <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
+        <input class="string-note" type="text" readonly />
+      </div>
+
+      <!-- String 6 -->
+      <div class="string-row" data-string="6">
+        <div class="string-label">Cuerda 6</div>
         <select class="string-tuning"></select>
         <input class="fret-input" type="text" placeholder="0, 1, 3, x..." />
         <input class="string-note" type="text" readonly />
@@ -362,14 +362,14 @@
         : NOTE_NAMES[pc];
     }
 
-    // Built-in tunings: [string6, string5, ..., string1] as pitch class
+    // Built-in tunings: [string1, string2, ..., string6] as pitch class
     const builtInTunings = {
-      "E estándar":       [4, 9, 2, 7, 11, 4], // E A D G B E
-      "Drop D":           [2, 9, 2, 7, 11, 4], // D A D G B E
-      "D estándar":       [2, 7, 0, 5, 9, 2],  // D G C F A D
-      "Drop C":           [0, 7, 0, 5, 9, 2],  // C G C F A D
-      "Drop B":           [11, 6, 11, 4, 8, 1],// B F# B E G# C#
-      "Drop A":           [9, 4, 9, 2, 6, 11]  // A E A D F# B
+      "E estándar":       [4, 11, 7, 2, 9, 4], // E B G D A E
+      "Drop D":           [4, 11, 7, 2, 9, 2], // E B G D A D
+      "D estándar":       [2, 9, 5, 0, 7, 2],  // D A F C G D
+      "Drop C":           [2, 9, 5, 0, 7, 0],  // D A F C G C
+      "Drop B":           [1, 8, 4, 11, 6, 11],// C# G# E B F# B
+      "Drop A":           [11, 6, 2, 9, 4, 9]  // B F# D A E A
     };
 
     // Custom tunings (saved in localStorage)
