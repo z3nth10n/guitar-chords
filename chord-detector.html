@@ -59,13 +59,13 @@
 
       <div class="advanced-settings" style="margin-top: 10px;">
         <details>
-          <summary style="cursor:pointer; font-size: 13px; font-weight: 600;">
-            Ajustes avanzados de detección
+          <summary style="cursor:pointer; font-size: 13px; font-weight: 600;" data-i18n="advanced_settings_title">
+            Advanced Detection Settings
           </summary>
           <div style="margin-top:8px; display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap:8px; align-items:center;">
             
             <label style="font-size: 13px;">
-              Ventana historial notas (ms)
+              <span data-i18n="label_history_window">Note History Window (ms)</span>
               <input type="number" id="historyWindowInput"
                      min="100" step="50"
                      value="900"
@@ -73,7 +73,7 @@
             </label>
 
             <label style="font-size: 13px;">
-              Mín. notas distintas para acorde
+              <span data-i18n="label_min_notes">Min. Distinct Notes for Chord</span>
               <input type="number" id="minNotesForChordInput"
                      min="1" step="1"
                      value="3"
@@ -81,7 +81,7 @@
             </label>
 
             <label style="font-size: 13px;">
-              Desviación máx. (cents)
+              <span data-i18n="label_max_deviation">Max. Deviation (cents)</span>
               <input type="number" id="maxDeviationCentsInput"
                      min="5" step="5"
                      value="35"
@@ -89,7 +89,7 @@
             </label>
 
             <label style="font-size: 13px;">
-              Tiempo retención nota (ms)
+              <span data-i18n="label_note_hold_time">Note Hold Time (ms)</span>
               <input type="number" id="noteHoldTimeInput"
                      min="0" step="50"
                      value="400"
@@ -97,7 +97,7 @@
             </label>
 
             <label style="font-size: 13px;">
-              Calidad mínima acorde (0-1)
+              <span data-i18n="label_chord_min_quality">Min. Chord Quality (0-1)</span>
               <input type="number" id="chordMinQualityInput"
                      min="0.1" max="1.0" step="0.05"
                      value="0.52"
@@ -105,7 +105,7 @@
             </label>
 
             <label style="font-size: 13px;">
-              Umbral de volumen (RMS)
+              <span data-i18n="label_min_volume_rms">Volume Threshold (RMS)</span>
               <input type="number" id="minVolumeRmsInput"
                      min="0.001" max="0.1" step="0.001"
                      value="0.003"
@@ -113,11 +113,11 @@
             </label>
 
             <div style="display:flex; gap:8px; margin-top:4px;">
-              <button type="button" id="saveDetectionSettingsBtn" class="btn-action">
-                Guardar ajustes
+              <button type="button" id="saveDetectionSettingsBtn" class="btn-action" data-i18n="btn_save_settings">
+                Save Settings
               </button>
-              <button type="button" id="resetDetectionSettingsBtn" class="btn-action">
-                Reset a valores por defecto
+              <button type="button" id="resetDetectionSettingsBtn" class="btn-action" data-i18n="btn_reset_settings">
+                Reset to Defaults
               </button>
             </div>
           </div>
@@ -143,24 +143,24 @@
         </div>
 
         <div class="result-card">
-          <div class="result-label" data-i18n="label_string_fret">Cuerda / traste sugeridos</div>
+          <div class="result-label" data-i18n="label_string_fret">Suggested String / Fret</div>
           <div id="stringFretDisplay" class="result-main"></div>
           <div id="stringFretDetail" class="result-secondary"></div>
         </div>
       </div>
 
       <details id="logPanel" class="log-panel" style="margin-top: 16px;">
-        <summary style="cursor:pointer; font-weight: 600;">
+        <summary style="cursor:pointer; font-weight: 600;" data-i18n="label_logs_debug">
           Logs / Debug
         </summary>
         <div class="log-panel-inner" style="margin-top: 8px;">
           <div class="log-panel-controls" style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
             <label style="font-size: 13px;">
               <input type="checkbox" id="enableLogsCheckbox" checked />
-              Activar logs
+              <span data-i18n="label_enable_logs">Enable Logs</span>
             </label>
-            <button type="button" id="clearLogsBtn" class="btn-action">
-              Limpiar
+            <button type="button" id="clearLogsBtn" class="btn-action" data-i18n="btn_clear_logs">
+              Clear
             </button>
           </div>
           <pre id="logOutput" class="log-output"></pre>
@@ -169,8 +169,8 @@
 
       <div id="errors"></div>
       <p class="hint" data-i18n="hint_text" data-i18n-html="true">
-        Consejo: usa una <strong>guitarra bien afinada</strong>, toca limpio cerca del micro y evita ruido de fondo.
-        La detección de acordes es aproximada (no es tan precisa como un plugin dedicado).
+        Hint: use a <strong>well-tuned guitar</strong>, play cleanly near the mic and avoid background noise.
+        Chord detection is approximate (not as precise as a dedicated plugin).
       </p>
     </div>
 
