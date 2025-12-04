@@ -11,5 +11,9 @@ window.translations_en = {
   "label_type": "Type",
   "type_Major": "Major",
   "type_Minor": "Minor",
-  "type_7": "7"
+  "type_7": "7",
+  "finger_index": "Index",
+  "finger_middle": "Middle",
+  "finger_ring": "Ring",
+  "finger_pinky": "Pinky"
 };

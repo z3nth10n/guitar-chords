@@ -11,5 +11,9 @@ window.translations_es = {
   "label_type": "Tipo",
   "type_Major": "Mayor",
   "type_Minor": "Menor",
-  "type_7": "7"
+  "type_7": "7",
+  "finger_index": "Índice",
+  "finger_middle": "Medio",
+  "finger_ring": "Anular",
+  "finger_pinky": "Meñique"
 };
