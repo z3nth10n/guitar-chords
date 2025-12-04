@@ -55,6 +55,49 @@
             </select>
           </div>
       </div>
+
+      <div class="advanced-settings" style="margin-top: 10px;">
+        <details>
+          <summary style="cursor:pointer; font-size: 13px; font-weight: 600;">
+            Ajustes avanzados de detección
+          </summary>
+          <div style="margin-top:8px; display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap:8px; align-items:center;">
+            
+            <label style="font-size: 13px;">
+              Ventana historial notas (ms)
+              <input type="number" id="historyWindowInput"
+                     min="100" step="50"
+                     value="900"
+                     style="width:100%; padding:4px; border-radius:4px; border:1px solid var(--border);" />
+            </label>
+
+            <label style="font-size: 13px;">
+              Mín. notas distintas para acorde
+              <input type="number" id="minNotesForChordInput"
+                     min="1" step="1"
+                     value="3"
+                     style="width:100%; padding:4px; border-radius:4px; border:1px solid var(--border);" />
+            </label>
+
+            <label style="font-size: 13px;">
+              Desviación máx. (cents)
+              <input type="number" id="maxDeviationCentsInput"
+                     min="5" step="5"
+                     value="35"
+                     style="width:100%; padding:4px; border-radius:4px; border:1px solid var(--border);" />
+            </label>
+
+            <div style="display:flex; gap:8px; margin-top:4px;">
+              <button type="button" id="saveDetectionSettingsBtn" style="font-size:12px; padding:4px 10px;">
+                Guardar ajustes
+              </button>
+              <button type="button" id="resetDetectionSettingsBtn" style="font-size:12px; padding:4px 10px;">
+                Reset a valores por defecto
+              </button>
+            </div>
+          </div>
+        </details>
+      </div>
     </div>
 
     <div class="panel">
@@ -80,6 +123,34 @@
           <div id="stringFretDetail" class="result-secondary"></div>
         </div>
       </div>
+
+      <details id="logPanel" class="log-panel" style="margin-top: 16px;">
+        <summary style="cursor:pointer; font-weight: 600;">
+          Logs / Debug
+        </summary>
+        <div class="log-panel-inner" style="margin-top: 8px;">
+          <div class="log-panel-controls" style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+            <label style="font-size: 13px;">
+              <input type="checkbox" id="enableLogsCheckbox" checked />
+              Activar logs
+            </label>
+            <button type="button" id="clearLogsBtn" style="font-size:12px; padding:2px 8px;">
+              Limpiar
+            </button>
+          </div>
+          <pre id="logOutput"
+               class="log-output"
+               style="
+                 max-height: 200px;
+                 overflow: auto;
+                 background: rgba(0,0,0,0.04);
+                 padding: 8px;
+                 border-radius: 4px;
+                 font-size: 11px;
+                 white-space: pre-wrap;
+               "></pre>
+        </div>
+      </details>
 
       <div id="errors"></div>
       <p class="hint" data-i18n="hint_text" data-i18n-html="true">

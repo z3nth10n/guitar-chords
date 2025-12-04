@@ -47,15 +47,21 @@ const STRING_TUNINGS = [
 
 const MAX_FRET = 20;
 
-// ===================== Note History for Chord Detection =====================
-// Ventana de tiempo que usamos para reconstruir el acorde a partir de notas sueltas
-const NOTE_HISTORY_WINDOW_MS = 900;     // entre 700 y 1000 va bien
-const MIN_NOTES_FOR_CHORD = 3;         // mínimo de notas distintas para considerar que hay acorde
-const MAX_DEVIATION_CENTS = 35;        // ignorar detecciones muy desafinadas / ruido
+// ===================== Advanced Detection Settings =====================
+const DEFAULT_DETECTION_SETTINGS = {
+  historyWindowMs: 900,   // ventana de 0.9s de notas recientes
+  minNotesForChord: 3,    // mín. notas distintas para considerar acorde
+  maxDeviationCents: 35,  // filtrar notas muy desafinadas
+};
+
+let NOTE_HISTORY_WINDOW_MS = DEFAULT_DETECTION_SETTINGS.historyWindowMs;
+let MIN_NOTES_FOR_CHORD = DEFAULT_DETECTION_SETTINGS.minNotesForChord;
+let MAX_DEVIATION_CENTS = DEFAULT_DETECTION_SETTINGS.maxDeviationCents;
 
 // Guardamos notas detectadas recientemente: { pc, time }
 let recentNotes = [];
 
+// ===================== Note History Helpers =====================
 /**
  * Registra una nota en el historial si está suficientemente afinada.
  * noteInfo: resultado de frequencyToNote(freq)
@@ -64,7 +70,7 @@ let recentNotes = [];
 function registerNoteEvent(noteInfo, timestampMs) {
   if (!noteInfo || typeof noteInfo.cents !== "number") return;
 
-  // Si está muy fuera de tono la descartamos (ruido / detección mala)
+  // Ignorar notas muy desafinadas (suelen ser ruido o detecciones malas)
   if (Math.abs(noteInfo.cents) > MAX_DEVIATION_CENTS) return;
 
   const pc = ((noteInfo.midi % 12) + 12) % 12;
@@ -167,12 +173,173 @@ const langSelect = document.getElementById("langSelect");
 const intervalInput = document.getElementById("intervalInput");
 const saveIntervalBtn = document.getElementById("saveIntervalBtn");
 
+const historyWindowInput = document.getElementById("historyWindowInput");
+const minNotesForChordInput = document.getElementById("minNotesForChordInput");
+const maxDeviationCentsInput = document.getElementById("maxDeviationCentsInput");
+const saveDetectionSettingsBtn = document.getElementById("saveDetectionSettingsBtn");
+const resetDetectionSettingsBtn = document.getElementById("resetDetectionSettingsBtn");
+
+const enableLogsCheckbox = document.getElementById("enableLogsCheckbox");
+const clearLogsBtn = document.getElementById("clearLogsBtn");
+const logOutputEl = document.getElementById("logOutput");
+
 const waveCanvas = document.getElementById("waveCanvas");
 const waveCtx = waveCanvas.getContext("2d");
 
 // ===================== Utilities =====================
 function log2(x) {
   return Math.log(x) / Math.LN2;
+}
+
+// ===================== Logging / Debug =====================
+const LOG_ENABLED_KEY = "chordDetectorLogsEnabled";
+const DETECTION_SETTINGS_KEY = "chordDetectorDetectionSettings";
+const LOG_MAX_LINES = 200;
+
+let loggingEnabled = true;
+let lastLoggedNoteMidi = null;
+let lastLoggedChordLabel = "";
+
+function logMessage(message) {
+  if (!loggingEnabled || !logOutputEl) return;
+
+  const now = new Date();
+  const stamp = now.toLocaleTimeString();
+  const line = `[${stamp}] ${message}`;
+
+  if (logOutputEl.textContent && logOutputEl.textContent.length > 0) {
+    logOutputEl.textContent += "\n" + line;
+  } else {
+    logOutputEl.textContent = line;
+  }
+
+  const lines = logOutputEl.textContent.split("\n");
+  if (lines.length > LOG_MAX_LINES) {
+    logOutputEl.textContent = lines.slice(lines.length - LOG_MAX_LINES).join("\n");
+  }
+}
+
+function initLogUI() {
+  if (enableLogsCheckbox) {
+    const stored = localStorage.getItem(LOG_ENABLED_KEY);
+    if (stored !== null) {
+      loggingEnabled = stored === "true";
+      enableLogsCheckbox.checked = loggingEnabled;
+    } else {
+      loggingEnabled = true;
+      enableLogsCheckbox.checked = true;
+    }
+
+    enableLogsCheckbox.addEventListener("change", () => {
+      loggingEnabled = !!enableLogsCheckbox.checked;
+      localStorage.setItem(LOG_ENABLED_KEY, loggingEnabled ? "true" : "false");
+      if (loggingEnabled) logMessage("Logs activados.");
+    });
+  }
+
+  if (clearLogsBtn && logOutputEl) {
+    clearLogsBtn.addEventListener("click", () => {
+      logOutputEl.textContent = "";
+    });
+  }
+}
+
+// ===================== Detection Settings (localStorage) =====================
+function applyDetectionSettings(settings) {
+  NOTE_HISTORY_WINDOW_MS = settings.historyWindowMs;
+  MIN_NOTES_FOR_CHORD = settings.minNotesForChord;
+  MAX_DEVIATION_CENTS = settings.maxDeviationCents;
+}
+
+function reflectDetectionSettingsInInputs(settings) {
+  if (historyWindowInput) {
+    historyWindowInput.value = settings.historyWindowMs;
+  }
+  if (minNotesForChordInput) {
+    minNotesForChordInput.value = settings.minNotesForChord;
+  }
+  if (maxDeviationCentsInput) {
+    maxDeviationCentsInput.value = settings.maxDeviationCents;
+  }
+}
+
+function loadDetectionSettingsFromStorage() {
+  let settings = { ...DEFAULT_DETECTION_SETTINGS };
+  const stored = localStorage.getItem(DETECTION_SETTINGS_KEY);
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (typeof parsed.historyWindowMs === "number" && parsed.historyWindowMs > 0) {
+        settings.historyWindowMs = parsed.historyWindowMs;
+      }
+      if (typeof parsed.minNotesForChord === "number" && parsed.minNotesForChord >= 1) {
+        settings.minNotesForChord = parsed.minNotesForChord;
+      }
+      if (typeof parsed.maxDeviationCents === "number" && parsed.maxDeviationCents > 0) {
+        settings.maxDeviationCents = parsed.maxDeviationCents;
+      }
+    } catch (e) {
+      console.warn("Could not parse detection settings from storage:", e);
+    }
+  }
+  applyDetectionSettings(settings);
+  reflectDetectionSettingsInInputs(settings);
+  logMessage(
+    `Ajustes avanzados cargados (ventana=${settings.historyWindowMs}ms, mín notas=${settings.minNotesForChord}, max desv=${settings.maxDeviationCents}cents)`
+  );
+}
+
+function readDetectionSettingsFromInputs() {
+  const settings = { ...DEFAULT_DETECTION_SETTINGS };
+
+  if (historyWindowInput) {
+    const v = parseInt(historyWindowInput.value, 10);
+    if (!isNaN(v) && v > 0) settings.historyWindowMs = v;
+  }
+  if (minNotesForChordInput) {
+    const v = parseInt(minNotesForChordInput.value, 10);
+    if (!isNaN(v) && v >= 1) settings.minNotesForChord = v;
+  }
+  if (maxDeviationCentsInput) {
+    const v = parseInt(maxDeviationCentsInput.value, 10);
+    if (!isNaN(v) && v > 0) settings.maxDeviationCents = v;
+  }
+
+  return settings;
+}
+
+function saveDetectionSettingsFromInputs() {
+  const settings = readDetectionSettingsFromInputs();
+  localStorage.setItem(DETECTION_SETTINGS_KEY, JSON.stringify(settings));
+  applyDetectionSettings(settings);
+  logMessage(
+    `Ajustes avanzados guardados (ventana=${settings.historyWindowMs}ms, mín notas=${settings.minNotesForChord}, max desv=${settings.maxDeviationCents}cents)`
+  );
+}
+
+function resetDetectionSettingsToDefaults() {
+  const settings = { ...DEFAULT_DETECTION_SETTINGS };
+  applyDetectionSettings(settings);
+  reflectDetectionSettingsInInputs(settings);
+  localStorage.setItem(DETECTION_SETTINGS_KEY, JSON.stringify(settings));
+  recentNotes = [];
+  logMessage("Ajustes avanzados reseteados a valores por defecto.");
+}
+
+function initAdvancedSettingsAndLogsUI() {
+  initLogUI();
+  loadDetectionSettingsFromStorage();
+
+  if (saveDetectionSettingsBtn) {
+    saveDetectionSettingsBtn.addEventListener("click", () => {
+      saveDetectionSettingsFromInputs();
+    });
+  }
+  if (resetDetectionSettingsBtn) {
+    resetDetectionSettingsBtn.addEventListener("click", () => {
+      resetDetectionSettingsToDefaults();
+    });
+  }
 }
 
 function frequencyToNote(freq) {
@@ -385,11 +552,18 @@ function analysisLoop() {
       // >>> NUEVO: registrar la nota para detección de acordes
       registerNoteEvent(noteInfo, now);
 
+      // LOG: Si la nota es distinta a la última logueada, la mostramos
+      if (lastLoggedNoteMidi !== noteInfo.midi) {
+        logMessage(`Nota detectada: ${noteInfo.name} (${freq.toFixed(1)} Hz)`);
+        lastLoggedNoteMidi = noteInfo.midi;
+      }
+
     } else {
       updateUIForSilence();
       if (chordFreqDisplay) chordFreqDisplay.textContent = "";
       // >>> NUEVO: si llevamos rato en silencio, vaciar historial
       resetNoteHistoryIfIdle(now);
+      lastLoggedNoteMidi = null; // Reset para que vuelva a loguear si suena la misma nota
     }
 
     // Detección de acorde usando el nuevo motor basado en historial
@@ -402,6 +576,15 @@ function analysisLoop() {
       chordNotes.textContent = `${
         chord.description
       } · ${msgDetected} ${chord.allNotes.join(", ")}`;
+
+      // LOG: Si el acorde es distinto al último logueado
+      if (lastLoggedChordLabel !== chord.label) {
+        logMessage(`Acorde detectado: ${chord.label} [${chord.allNotes.join("-")}]`);
+        lastLoggedChordLabel = chord.label;
+      }
+    } else {
+      // Si no hay acorde, reseteamos el último logueado para que si vuelve a sonar, se loguee
+      lastLoggedChordLabel = "";
     }
   }
 
@@ -498,6 +681,9 @@ toggleButton.addEventListener("click", () => {
 
 // ===================== Initialization =====================
 document.addEventListener("DOMContentLoaded", () => {
+  // Initialize Advanced Settings & Logs
+  initAdvancedSettingsAndLogsUI();
+
   // Load saved interval
   const savedInterval = localStorage.getItem("chordDetectorInterval");
   if (savedInterval) {
