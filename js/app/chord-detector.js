@@ -42,6 +42,9 @@
     const timeDomainBufferSize = 2048;
     let timeDomainBuffer = null;
 
+    let lastAnalysisTime = 0;
+    let analysisInterval = 100; // ms
+
     // ===================== UI Elements =====================
     const toggleButton = document.getElementById("toggleButton");
     const statusDot = document.getElementById("statusDot");
@@ -54,6 +57,8 @@
     const stringFretDetail = document.getElementById("stringFretDetail");
     const errorsEl = document.getElementById("errors");
     const langSelect = document.getElementById("langSelect");
+    const intervalInput = document.getElementById("intervalInput");
+    const saveIntervalBtn = document.getElementById("saveIntervalBtn");
 
     const waveCanvas = document.getElementById("waveCanvas");
     const waveCtx = waveCanvas.getContext("2d");
@@ -254,41 +259,47 @@
 
       analyser.getFloatTimeDomainData(timeDomainBuffer);
 
-      const freq = autoCorrelate(timeDomainBuffer, audioContext.sampleRate);
-      if (freq) {
-        const noteInfo = frequencyToNote(freq);
-        noteDisplay.textContent = `${noteInfo.name}`;
-        const centsStr = noteInfo.cents.toFixed(1);
-        const msgDeviation = window.t ? window.t("msg_deviation") : "Hz · deviation";
-        const msgCents = window.t ? window.t("msg_cents") : "cents";
-        noteDetail.textContent = `${freq.toFixed(1)} ${msgDeviation} ${centsStr} ${msgCents}`;
-
-        const sf = guessStringAndFret(noteInfo.midi);
-        if (sf) {
-          const msgApprox = window.t ? window.t("msg_approx") : "(approx)";
-          const approx = sf.diff > 0.4 ? ` ${msgApprox}` : "";
-          stringFretDisplay.textContent = `${sf.string.name}, fret ${sf.fret}${approx}`;
-          const noteName = getNoteName((sf.string.midi + sf.fret) % 12);
-          const msgSuggested = window.t ? window.t("msg_suggested_note") : "Note at suggested position:";
-          stringFretDetail.textContent = `${msgSuggested} ${noteName}`;
-        } else {
-          stringFretDisplay.textContent = "—";
-          stringFretDetail.textContent = "";
-        }
-      } else {
-        updateUIForSilence();
-      }
-
-      // Chord detection (very basic)
-      const chord = detectChordFromSpectrum();
-      if (chord) {
-        chordDisplay.textContent = chord.label;
-        const msgDetected = window.t ? window.t("msg_detected_notes") : "detected notes:";
-        chordNotes.textContent =
-          `${chord.description} · ${msgDetected} ${chord.allNotes.join(", ")}`;
-      }
-
+      // Always draw waveform for smoothness
       drawWaveform(timeDomainBuffer);
+
+      const now = Date.now();
+      if (now - lastAnalysisTime >= analysisInterval) {
+        lastAnalysisTime = now;
+
+        const freq = autoCorrelate(timeDomainBuffer, audioContext.sampleRate);
+        if (freq) {
+          const noteInfo = frequencyToNote(freq);
+          noteDisplay.textContent = `${noteInfo.name}`;
+          const centsStr = noteInfo.cents.toFixed(1);
+          const msgDeviation = window.t ? window.t("msg_deviation") : "Hz · deviation";
+          const msgCents = window.t ? window.t("msg_cents") : "cents";
+          noteDetail.textContent = `${freq.toFixed(1)} ${msgDeviation} ${centsStr} ${msgCents}`;
+
+          const sf = guessStringAndFret(noteInfo.midi);
+          if (sf) {
+            const msgApprox = window.t ? window.t("msg_approx") : "(approx)";
+            const approx = sf.diff > 0.4 ? ` ${msgApprox}` : "";
+            stringFretDisplay.textContent = `${sf.string.name}, fret ${sf.fret}${approx}`;
+            const noteName = getNoteName((sf.string.midi + sf.fret) % 12);
+            const msgSuggested = window.t ? window.t("msg_suggested_note") : "Note at suggested position:";
+            stringFretDetail.textContent = `${msgSuggested} ${noteName}`;
+          } else {
+            stringFretDisplay.textContent = "—";
+            stringFretDetail.textContent = "";
+          }
+        } else {
+          updateUIForSilence();
+        }
+
+        // Chord detection (very basic)
+        const chord = detectChordFromSpectrum();
+        if (chord) {
+          chordDisplay.textContent = chord.label;
+          const msgDetected = window.t ? window.t("msg_detected_notes") : "detected notes:";
+          chordNotes.textContent =
+            `${chord.description} · ${msgDetected} ${chord.allNotes.join(", ")}`;
+        }
+      }
 
       requestAnimationFrame(analysisLoop);
     }
@@ -375,9 +386,33 @@
 
     // ===================== Initialization =====================
     document.addEventListener("DOMContentLoaded", () => {
+        // Load saved interval
+        const savedInterval = localStorage.getItem("chordDetectorInterval");
+        if (savedInterval) {
+            const val = parseInt(savedInterval, 10);
+            if (!isNaN(val) && val > 0) {
+                analysisInterval = val;
+                if (intervalInput) intervalInput.value = val;
+            }
+        }
+
+        if (saveIntervalBtn && intervalInput) {
+            saveIntervalBtn.addEventListener("click", () => {
+                const val = parseInt(intervalInput.value, 10);
+                if (!isNaN(val) && val > 0) {
+                    analysisInterval = val;
+                    localStorage.setItem("chordDetectorInterval", val);
+                    const msg = window.t ? window.t("msg_interval_saved") : "Interval saved.";
+                    alert(msg);
+                } else {
+                    alert("Invalid interval");
+                }
+            });
+        }
+
         // Set translation prefix for this page
         if (window.setTranslationPrefix) {
-            window.setTranslationPrefix('chords-detector/chord-detector');
+            window.setTranslationPrefix('chord-detector/chord-detector');
         }
 
         // Detect browser language

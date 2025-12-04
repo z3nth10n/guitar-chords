@@ -307,6 +307,32 @@
       filter: brightness(0.97);
     }
 
+    #saveIntervalBtn {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--accent);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    #saveIntervalBtn:hover {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      transform: scale(1.05);
+    }
+
+    #saveIntervalBtn:active {
+      transform: scale(0.95);
+    }
+
     .panel {
       border-radius: 18px;
       border: 1px solid var(--border);
