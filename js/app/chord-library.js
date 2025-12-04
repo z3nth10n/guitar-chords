@@ -182,7 +182,7 @@ const state = {
 
 // --- DOM Elements ---
 const rootPicker = document.getElementById('rootPicker');
-const typeSelect = document.getElementById('typeSelect');
+const typePicker = document.getElementById('typePicker');
 const chordNameDisplay = document.getElementById('chordNameDisplay');
 const canvas = document.getElementById('fretboardCanvas');
 const ctx = canvas.getContext('2d');
@@ -251,7 +251,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (window.loadTranslations) {
       window.loadTranslations(newLang, () => {
         renderRootPicker(); // Re-render to update note names
-        renderTypeSelect(); // Re-render types to update translations
+        renderTypePicker(); // Re-render types to update translations
         updateDisplay();
       });
     }
@@ -267,14 +267,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function init() {
   renderRootPicker();
-  renderTypeSelect();
+  renderTypePicker();
   
   // Event Listeners
-  typeSelect.addEventListener('change', (e) => {
-    state.type = e.target.value;
-    state.voicingIndex = 0;
-    updateDisplay();
-  });
+  // Type selection is handled in renderTypePicker
 
   prevBtn.addEventListener('click', () => {
     if (state.voicingIndex > 0) {
@@ -319,18 +315,24 @@ function renderRootPicker() {
   });
 }
 
-function renderTypeSelect() {
+function renderTypePicker() {
   const types = ['Major', 'Minor', '7']; // Add more as needed
-  const currentVal = typeSelect.value;
+  typePicker.innerHTML = '';
   
-  typeSelect.innerHTML = types.map(t => {
+  types.forEach(t => {
     const label = window.t ? window.t('type_' + t) : t;
-    return `<option value="${t}">${label}</option>`;
-  }).join('');
-  
-  if (currentVal && types.includes(currentVal)) {
-      typeSelect.value = currentVal;
-  }
+    const btn = document.createElement('button');
+    btn.className = `type-btn ${t === state.type ? 'active' : ''}`;
+    btn.textContent = label;
+    btn.onclick = () => {
+      document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.type = t;
+      state.voicingIndex = 0;
+      updateDisplay();
+    };
+    typePicker.appendChild(btn);
+  });
 }
 
 function getVariations() {
