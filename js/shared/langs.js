@@ -1,6 +1,23 @@
 window.currentLang = "en";
 window.translations = {};
 
+function detectTranslationPrefix() {
+    const path = window.location.pathname;
+    if (path.indexOf("chord-detector.html") !== -1) {
+        return "chord-detector/chord-detector";
+    } else if (path.indexOf("chords.html") !== -1) {
+        return "chords/chords";
+    }
+    return "index";
+}
+
+window.translationPrefix = detectTranslationPrefix();
+console.log("Auto-detected translation prefix:", window.translationPrefix);
+
+window.setTranslationPrefix = function(prefix) {
+    window.translationPrefix = prefix;
+};
+
 window.loadTranslations = function(lang, onLanguageLoaded) {
   console.log("Loading translations for:", lang);
   
@@ -12,7 +29,7 @@ window.loadTranslations = function(lang, onLanguageLoaded) {
 
   const script = document.createElement('script');
   script.id = 'lang-script';
-  script.src = 'langs/chords.' + lang + '.js?v=' + new Date().getTime();
+  script.src = 'langs/' + window.translationPrefix + '.' + lang + '.js?v=' + new Date().getTime();
   
   script.onload = function() {
     // The script should have set window.translations_en or window.translations_es
