@@ -1,21 +1,21 @@
 document.addEventListener("DOMContentLoaded", () => {
   // Set translation prefix for this page
   if (window.setTranslationPrefix) {
-    window.setTranslationPrefix('index');
+    window.setTranslationPrefix("index");
   }
 
   const langSelect = document.getElementById("langSelect");
-  
+
   // Detect browser language
-  const browserLang = navigator.language || navigator.userLanguage || 'en';
-  let userLang = browserLang.startsWith('es') ? 'es' : 'en';
+  const browserLang = navigator.language || navigator.userLanguage || "en";
+  let userLang = browserLang.startsWith("es") ? "es" : "en";
 
   // Load saved language
   const savedLang = localStorage.getItem("portal_selectedLang");
   if (savedLang) {
     userLang = savedLang;
   }
-  
+
   if (langSelect) {
     langSelect.value = userLang;
     langSelect.addEventListener("change", (e) => {
