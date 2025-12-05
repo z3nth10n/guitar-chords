@@ -85,7 +85,7 @@ function saveCustomTunings() {
 document.addEventListener("DOMContentLoaded", async () => {
   // Set translation prefix for this page
   if (window.setTranslationPrefix) {
-    window.setTranslationPrefix("chords/chords");
+    window.setTranslationPrefix("chord-by-fret/chord-by-fret");
   }
 
   const tuningSelect = document.getElementById("tuningSelect");
@@ -117,9 +117,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   let userLang = browserLang.startsWith("es") ? "es" : "en";
 
   // Load saved preferences
-  const savedTuning = localStorage.getItem("chords_selectedTuning");
-  const savedNotation = localStorage.getItem("chords_selectedNotation");
-  const savedLang = localStorage.getItem("chords_selectedLang");
+  const savedTuning = localStorage.getItem("chordByFret_selectedTuning");
+  const savedNotation = localStorage.getItem("chordByFret_selectedNotation");
+  const savedLang = localStorage.getItem("chordByFret_selectedLang");
 
   if (savedLang) {
     userLang = savedLang;
@@ -159,7 +159,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   langSelect.addEventListener("change", (e) => {
     const newLang = e.target.value;
-    localStorage.setItem("chords_selectedLang", newLang);
+    localStorage.setItem("chordByFret_selectedLang", newLang);
 
     // Auto-switch notation based on language ONLY if not manually overridden (optional, but user asked to save notation)
     // Actually, if user changes language, we usually switch notation defaults, but if they have a saved notation preference, maybe we should respect it?
@@ -171,7 +171,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       notationSelect.value = "latin";
       currentNotation = "latin";
     }
-    localStorage.setItem("chords_selectedNotation", currentNotation);
+    localStorage.setItem("chordByFret_selectedNotation", currentNotation);
 
     if (window.loadTranslations) {
       window.loadTranslations(newLang, updateChordUI);
@@ -180,13 +180,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   notationSelect.addEventListener("change", (e) => {
     currentNotation = e.target.value;
-    localStorage.setItem("chords_selectedNotation", currentNotation);
+    localStorage.setItem("chordByFret_selectedNotation", currentNotation);
     refreshStringTuningOptionLabels();
     updateStringNotes();
   });
 
   tuningSelect.addEventListener("change", () => {
-    localStorage.setItem("chords_selectedTuning", tuningSelect.value);
+    localStorage.setItem("chordByFret_selectedTuning", tuningSelect.value);
     applySelectedTuning();
     clearFretInputs();
     clearMessages();

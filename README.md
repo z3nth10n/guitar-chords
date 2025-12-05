@@ -14,7 +14,7 @@ Ever played a cool shape on the guitar but didn't know what it was called? The C
 - **Advanced Recognition**: Identifies complex chords including 7ths, 9ths, 11ths, 13ths, suspended, and added tone chords.
 - **Notation Support**: Switch between Anglo (C, D, E) and Latin (Do, Re, Mi) notation.
 
-![Chord Detector](images/docs/chords.png)
+![Chord Detector](images/docs/chord-by-fret.png)
 
 ### 2. Guitar Analyzer (Audio Recognition)
 Use your device's microphone to analyze what you are playing in real-time.

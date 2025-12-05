@@ -3,10 +3,10 @@ window.translations = {};
 
 function detectTranslationPrefix() {
   const path = window.location.pathname;
-  if (path.indexOf("chord-detector.html") !== -1) {
-    return "chord-detector/chord-detector";
-  } else if (path.indexOf("chords.html") !== -1) {
-    return "chords/chords";
+  if (path.indexOf("chord-analysis.html") !== -1) {
+    return "chord-analysis/chord-analysis";
+  } else if (path.indexOf("chord-by-fret.html") !== -1) {
+    return "chord-by-fret/chord-by-fret";
   } else if (path.indexOf("chord-library.html") !== -1) {
     return "chord-library/chord-library";
   }

@@ -48,4 +48,4 @@ TIPO
 
 Esto afectaria a chord-library, ya que me gustaría que añadieras correctamente las digitaciones de todos dichos acordes con sus tipos.
 
-No estaría de más que validaras tambien los acordes que hay dentro de chords.js y cohrd-deterctor.html
+No estaría de más que validaras tambien los acordes que hay dentro de chord-by-fret.js y chord-analysis.html

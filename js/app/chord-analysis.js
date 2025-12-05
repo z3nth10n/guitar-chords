@@ -854,7 +854,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Set translation prefix for this page
   if (window.setTranslationPrefix) {
-    window.setTranslationPrefix("chord-detector/chord-detector");
+    window.setTranslationPrefix("chord-analysis/chord-analysis");
   }
 
   const notationSelect = document.getElementById("notationSelect");
@@ -864,13 +864,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let userLang = browserLang.startsWith("es") ? "es" : "en";
 
   // Load saved language preference
-  const savedLang = localStorage.getItem("chordDetector_selectedLang");
+  const savedLang = localStorage.getItem("chordAnalysis_selectedLang");
   if (savedLang) {
     userLang = savedLang;
   }
 
   // Load saved notation preference
-  const savedNotation = localStorage.getItem("chordDetector_selectedNotation");
+  const savedNotation = localStorage.getItem("chordAnalysis_selectedNotation");
   if (savedNotation) {
     currentNotation = savedNotation;
   } else {
@@ -886,7 +886,7 @@ document.addEventListener("DOMContentLoaded", () => {
     notationSelect.value = currentNotation;
     notationSelect.addEventListener("change", (e) => {
       currentNotation = e.target.value;
-      localStorage.setItem("chordDetector_selectedNotation", currentNotation);
+      localStorage.setItem("chordAnalysis_selectedNotation", currentNotation);
       // Refresh UI if needed (e.g. if we are displaying a note)
       // We don't have a specific function to refresh all text, but the loop will pick it up.
       // However, if we are paused, we might want to update the static text.
@@ -900,7 +900,7 @@ document.addEventListener("DOMContentLoaded", () => {
     langSelect.value = userLang;
     langSelect.addEventListener("change", (e) => {
       const newLang = e.target.value;
-      localStorage.setItem("chordDetector_selectedLang", newLang);
+      localStorage.setItem("chordAnalysis_selectedLang", newLang);
 
       // Auto-switch notation only if user hasn't explicitly saved a preference?
       // Or just follow the pattern: language change -> update notation default.
@@ -911,7 +911,7 @@ document.addEventListener("DOMContentLoaded", () => {
         currentNotation = "latin";
       }
       if (notationSelect) notationSelect.value = currentNotation;
-      localStorage.setItem("chordDetector_selectedNotation", currentNotation);
+      localStorage.setItem("chordAnalysis_selectedNotation", currentNotation);
 
       if (window.loadTranslations) {
         window.loadTranslations(newLang, () => {
