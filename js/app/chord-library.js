@@ -63,6 +63,12 @@ const CHORD_SHAPES = {
       fingers: [0, 1, 3, 4, 2, 1],
       bar: { finger: 1, strings: [1, 6], offset: 0 },
     },
+    {
+      rootString: 5,
+      offsets: [0, 0, 2, 2, 2, 0],
+      fingers: [1, 1, 3, 4, 2, 1],
+      bar: { finger: 1, strings: [1, 6], offset: 0 },
+    },
   ],
   5: [
     {
@@ -102,6 +108,12 @@ const CHORD_SHAPES = {
       offsets: [MUTE, 0, 2, 0, 2, 0],
       fingers: [0, 1, 3, 1, 4, 1],
       bar: { finger: 1, strings: [1, 5], offset: 0 },
+    },
+    {
+      rootString: 5,
+      offsets: [0, 0, 2, 0, 2, 0],
+      fingers: [1, 1, 3, 1, 4, 1],
+      bar: { finger: 1, strings: [1, 6], offset: 0 },
     },
   ],
   maj7: [
@@ -174,6 +186,12 @@ const CHORD_SHAPES = {
       fingers: [0, 1, 3, 4, 2, 1],
       bar: { finger: 1, strings: [1, 5], offset: 0 },
     },
+    {
+      rootString: 5,
+      offsets: [0, 0, 2, 2, 1, 0],
+      fingers: [1, 1, 3, 4, 2, 1],
+      bar: { finger: 1, strings: [1, 6], offset: 0 },
+    },
   ],
   m6: [
     {
@@ -200,6 +218,12 @@ const CHORD_SHAPES = {
       offsets: [MUTE, 0, 2, 0, 1, 0],
       fingers: [0, 1, 3, 1, 2, 1],
       bar: { finger: 1, strings: [1, 5], offset: 0 },
+    },
+    {
+      rootString: 5,
+      offsets: [0, 0, 2, 0, 1, 0],
+      fingers: [1, 1, 3, 1, 2, 1],
+      bar: { finger: 1, strings: [1, 6], offset: 0 },
     },
   ],
   m9: [
@@ -264,6 +288,12 @@ const CHORD_SHAPES = {
       offsets: [MUTE, 0, 2, 2, 3, 0],
       fingers: [0, 1, 2, 3, 4, 1],
       bar: { finger: 1, strings: [1, 5], offset: 0 },
+    },
+    {
+      rootString: 5,
+      offsets: [0, 0, 2, 2, 3, 0],
+      fingers: [1, 1, 2, 3, 4, 1],
+      bar: { finger: 1, strings: [1, 6], offset: 0 },
     },
   ],
   dim: [
