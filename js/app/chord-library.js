@@ -680,6 +680,7 @@ const state = {
 const rootPicker = document.getElementById("rootPicker");
 const typePicker = document.getElementById("typePicker");
 const chordNameDisplay = document.getElementById("chordNameDisplay");
+const rootFreqDisplay = document.getElementById("rootFreqDisplay");
 const canvas = document.getElementById("fretboardCanvas");
 const ctx = canvas.getContext("2d");
 const prevBtn = document.getElementById("prevVoicing");
@@ -2337,5 +2338,373 @@ function updateFretNavButtons() {
         updateFretNavButtons();
       }
     };
+  }
+}
+
+function updateRootFrequencyDisplay() {
+  if (!rootFreqDisplay) return;
+
+  // If custom mode, maybe clear or show nothing?
+  if (state.isCustomMode) {
+    rootFreqDisplay.textContent = "";
+    return;
+  }
+
+  const variations = getVariations();
+  const currentChord = variations[state.voicingIndex];
+  if (!currentChord) {
+    rootFreqDisplay.textContent = "";
+    return;
+  }
+
+  // Find the root note frequency
+  // 1. Identify Root Pitch Class
+  const rootIndex = NOTES_SHARP.indexOf(state.root); // 0-11
+  if (rootIndex === -1) {
+    rootFreqDisplay.textContent = "";
+    return;
+  }
+
+  // 2. Iterate strings to find the first note that matches the root PC
+  // state.currentTuning is [High E, ..., Low E] (Strings 1 to 6)
+  // We need [Low E, ..., High E] to match currentChord.frets order
+  const stringBaseMidi = [...state.currentTuning].reverse();
+  
+  let rootMidi = null;
+
+  // Iterate from String 6 (index 0) to String 1 (index 5)
+  // We want the lowest root note, so the first one we find is likely the bass/root.
+  for (let i = 0; i < 6; i++) {
+    const fret = currentChord.frets[i];
+    if (fret >= 0) {
+      const midi = stringBaseMidi[i] + fret;
+      if (midi % 12 === rootIndex) {
+        rootMidi = midi;
+        break; // Found the lowest root
+      }
+    }
+  }
+
+  if (rootMidi === null) {
+    // Fallback: if no root note found (e.g. rootless voicing), maybe show nothing?
+    rootFreqDisplay.textContent = "";
+    return;
+  }
+
+  // 3. Calculate Frequency with Detune
+  // Base freq
+  let freq = 440 * Math.pow(2, (rootMidi - 69) / 12);
+
+  // Apply Advanced Pitch Shift
+  const totalDetuneCents =
+    state.advanced.shiftOctaves * 1200 +
+    state.advanced.shiftSemitones * 100 +
+    state.advanced.shiftFull * 100 +
+    state.advanced.shiftCents;
+
+  if (totalDetuneCents !== 0) {
+    freq = freq * Math.pow(2, totalDetuneCents / 1200);
+  }
+
+  rootFreqDisplay.textContent = `(${freq.toFixed(1)} Hz)`;
+}
+
+// Update frequency every 100ms
+setInterval(updateRootFrequencyDisplay, 100);
+
+// --- Canvas Drawing ---
+function drawChord(chord) {
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Config
+  const marginX = 40;
+  const marginY = 60;
+  const stringSpacing = (w - 2 * marginX) / 5;
+  const fretSpacing = 50;
+  const numFrets = 5; // Draw 5 frets
+
+  // Determine start fret (offset)
+  const frets = chord.frets.filter((f) => f > 0);
+  const minFret = frets.length ? Math.min(...frets) : 0;
+  const maxFret = frets.length ? Math.max(...frets) : 0;
+
+  let startFret = 1;
+  if (state.isCustomMode && state.baseFret !== undefined) {
+    startFret = state.baseFret;
+  } else if (maxFret > 5) {
+    startFret = minFret;
+  }
+
+  // Draw Fretboard Background
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, w, h);
+
+  // Draw Frets
+  ctx.strokeStyle = "#444";
+  ctx.lineWidth = 2;
+  for (let i = 0; i <= numFrets; i++) {
+    const y = marginY + i * fretSpacing;
+    ctx.beginPath();
+    ctx.moveTo(marginX, y);
+    ctx.lineTo(w - marginX, y);
+    ctx.stroke();
+  }
+
+  // Draw Nut (if startFret is 1)
+  if (startFret === 1) {
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(marginX, marginY);
+    ctx.lineTo(w - marginX, marginY);
+    ctx.stroke();
+  } else {
+    // Draw fret number
+    ctx.fillStyle = "#000";
+    ctx.font = "bold 24px Arial";
+    ctx.fillText(`${startFret}fr`, 5, marginY + fretSpacing / 1.5);
+  }
+
+  // Draw Strings
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i++) {
+    const x = marginX + i * stringSpacing;
+    ctx.beginPath();
+    ctx.moveTo(x, marginY);
+    ctx.lineTo(x, marginY + numFrets * fretSpacing);
+    ctx.stroke();
+  }
+
+  // Draw Barre
+  const drawBarre = (bar, isGhost = false) => {
+    const barFret = bar.fret - startFret + 1;
+    if (barFret > 0 && barFret <= numFrets) {
+      const s1 = Math.min(bar.strings[0], bar.strings[1]);
+      const s2 = Math.max(bar.strings[0], bar.strings[1]);
+
+      const startIdx = s1 - 1;
+      const endIdx = s2 - 1;
+
+      const x1 = marginX + startIdx * stringSpacing;
+      const x2 = marginX + endIdx * stringSpacing;
+      const y = marginY + (barFret - 0.5) * fretSpacing;
+
+      ctx.lineCap = "round";
+      ctx.lineWidth = 14;
+      ctx.strokeStyle = isGhost
+        ? "rgba(51, 51, 51, 0.5)"
+        : getFingerColor(bar.finger);
+      ctx.beginPath();
+      ctx.moveTo(x1, y);
+      ctx.lineTo(x2, y);
+      ctx.stroke();
+    }
+  };
+
+  if (chord.bar) {
+    drawBarre(chord.bar);
+  }
+
+  if (state.interaction.barreCreating) {
+    const b = state.interaction.barreCreating;
+    drawBarre(
+      {
+        fret: b.fret,
+        strings: [b.startString + 1, b.endString + 1],
+        finger: 0,
+      },
+      true
+    );
+  }
+
+  // Draw Dots / Markers
+  chord.frets.forEach((fret, stringIndex) => {
+    // Skip if this is the dot being dragged
+    if (
+      state.interaction.dragging &&
+      state.interaction.dragging.stringIndex === stringIndex
+    ) {
+      return;
+    }
+
+    const x = marginX + stringIndex * stringSpacing;
+
+    // Muted/Open
+    if (fret === -1) {
+      ctx.fillStyle = "#444";
+      ctx.font = "20px Arial";
+      ctx.fillText("X", x - 6, marginY - 10);
+    } else if (fret === 0 || fret === -2) {
+      // Check if covered by barre (only if 0, not -2)
+      let drawnAsBarre = false;
+      if (fret === 0 && chord.bar) {
+        const bMin = Math.min(chord.bar.strings[0], chord.bar.strings[1]);
+        const bMax = Math.max(chord.bar.strings[0], chord.bar.strings[1]);
+        const stringNum = stringIndex + 1;
+        if (stringNum >= bMin && stringNum <= bMax) {
+          // It is covered by barre, so it's effectively the barre fret.
+          // We should draw a dot on the barre fret?
+          // Usually the barre line is enough.
+          // But if we want to be explicit, we can leave it.
+          // The barre line is drawn separately.
+          drawnAsBarre = true;
+        }
+      }
+
+      if (!drawnAsBarre || fret === -2) {
+        ctx.strokeStyle = "#444";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, marginY - 15, 6, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // If explicit open (-2), maybe add a small indicator?
+        if (fret === -2) {
+          ctx.fillStyle = "#444";
+          ctx.font = "10px Arial";
+          ctx.fillText("O", x - 4, marginY - 12);
+        }
+      }
+    } else {
+      // Fret position
+      const displayFret = fret - startFret + 1;
+      if (displayFret > 0 && displayFret <= numFrets) {
+        const y = marginY + (displayFret - 0.5) * fretSpacing;
+        const finger = chord.fingers[stringIndex];
+
+        // Don't draw dot if it's covered by barre (unless it's a different finger)
+        let coveredByBar = false;
+        if (
+          chord.bar &&
+          fret === chord.bar.fret &&
+          finger === chord.bar.finger
+        ) {
+          coveredByBar = true;
+        }
+
+        if (!coveredByBar) {
+          // Check if this note is being shadowed by a dragged note
+          let isShadowed = false;
+
+          // 1. Shadowed by Drag
+          if (
+            state.interaction.dragging &&
+            state.interaction.snapString === stringIndex
+          ) {
+            const snapFret = state.interaction.snapFret;
+            // If dragging ONTO this string
+            if (state.interaction.dragging.stringIndex !== stringIndex) {
+              if (snapFret > fret) {
+                isShadowed = true; // Dragged note is higher, so this one is shadowed
+              }
+            }
+          }
+
+          // 2. Shadowed by Barre
+          if (chord.bar) {
+            const bMin = Math.min(chord.bar.strings[0], chord.bar.strings[1]);
+            const bMax = Math.max(chord.bar.strings[0], chord.bar.strings[1]);
+            const stringNum = stringIndex + 1; // 1-based index
+
+            if (stringNum >= bMin && stringNum <= bMax) {
+              if (fret < chord.bar.fret) {
+                isShadowed = true;
+              }
+            }
+          }
+
+          ctx.fillStyle = isShadowed ? "#ff0000" : getFingerColor(finger);
+          ctx.beginPath();
+          ctx.arc(x, y, 12, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Finger number (only if not custom/0)
+          if (finger !== 0) {
+            ctx.fillStyle = "#fff";
+            ctx.font = "14px Arial";
+            ctx.fillText(finger, x - 4, y + 5);
+          }
+        }
+      }
+    }
+  });
+
+  // Draw Dragging Dot
+  if (state.interaction.dragging && state.interaction.dragPos) {
+    const { x, y } = state.interaction.dragPos;
+
+    // Draw ghost at snap target if available
+    if (
+      state.interaction.snapFret !== undefined &&
+      state.interaction.snapFret !== null
+    ) {
+      const snapFret = state.interaction.snapFret;
+      const snapString =
+        state.interaction.snapString !== undefined
+          ? state.interaction.snapString
+          : state.interaction.dragging.stringIndex;
+      const sx = marginX + snapString * stringSpacing;
+
+      // Check for conflict/shadowing
+      let isShadowed = false;
+      let isShadowing = false;
+
+      // If we are on a different string than source, check existing note
+      if (snapString !== state.interaction.dragging.stringIndex) {
+        const existingFret = chord.frets[snapString];
+        if (existingFret > 0) {
+          // Conflict exists
+          if (snapFret < existingFret) {
+            isShadowed = true; // New note is behind existing
+          } else if (snapFret > existingFret) {
+            isShadowing = true; // New note shadows existing
+          } else {
+            // Same fret - overlap (maybe red too?)
+            isShadowed = true;
+          }
+        }
+      }
+
+      if (snapFret === -1) {
+        // Mute ghost
+        ctx.fillStyle = "rgba(68, 68, 68, 0.5)";
+        ctx.font = "20px Arial";
+        ctx.fillText("X", sx - 6, marginY - 10);
+      } else if (snapFret === 0) {
+        // Open ghost
+        ctx.strokeStyle = "rgba(68, 68, 68, 0.5)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sx, marginY - 15, 6, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        // Fret ghost
+        const displayFret = snapFret - startFret + 1;
+        if (displayFret > 0 && displayFret <= numFrets) {
+          const sy = marginY + (displayFret - 0.5) * fretSpacing;
+
+          // Color logic
+          if (isShadowed) {
+            ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; // Red if shadowed
+          } else {
+            ctx.fillStyle = "rgba(51, 51, 51, 0.3)"; // Normal ghost
+          }
+
+          ctx.beginPath();
+          ctx.arc(sx, sy, 12, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // Draw the dragged dot (semi-transparent)
+    ctx.fillStyle = "rgba(51, 51, 51, 0.8)";
+    ctx.beginPath();
+    ctx.arc(x, y, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.5)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
 }

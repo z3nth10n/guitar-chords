@@ -181,7 +181,10 @@
     <div class="chord-display-container">
       <img src="images/chord-library/hands.png" class="hands-icon" alt="Hands">
       <div class="chord-header">
-        <h2 id="chordNameDisplay">C Major</h2>
+        <div style="display: flex; align-items: baseline; gap: 10px; justify-content: center;">
+          <h2 id="chordNameDisplay" style="margin: 0;">C Major</h2>
+          <span id="rootFreqDisplay" style="font-size: 1.2rem; color: var(--accent); font-weight: bold; opacity: 0.9;"></span>
+        </div>
         <div class="custom-chord-controls" style="margin-top: 1rem; display: flex; gap: 10px;">
           <button id="saveChordBtn" class="action-btn" style="display: none;" title="Save Chord">
             <span class="material-icons">save</span>
