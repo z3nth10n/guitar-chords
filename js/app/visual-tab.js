@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function parseTabContent(text) {
         const lines = text.split('\n');
         const blocks = [];
-        // Block structure: { strings: [], chords: null, pm: null }
+        // Block structure: { strings: [], chords: null, pm: null, measureNums: null, rhythmStems: null, rhythmBeams: null }
         
         // Regex for tab lines: e|-... or e -... or just starting with string name and |
         const stringRegex = /^[eBGDAE]\|/; 
@@ -230,25 +230,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         let tempStrings = [];
         let tempChord = null;
         let tempPM = null;
+        let tempMeasureNums = null;
+        let tempRhythmStems = null;
+        let tempRhythmBeams = null;
         
         for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (stringRegex.test(line)) {
+            const line = lines[i].trimEnd(); // Keep leading spaces
+            if (stringRegex.test(line.trim())) {
                 // If we already have 6 strings and find a new one, it's a new block
                 if (tempStrings.length === 6) {
                     if (!tempChord) {
                         tempChord = generateChordLine({ strings: tempStrings });
                     }
-                    blocks.push({ strings: tempStrings, chords: tempChord, pm: tempPM });
+                    blocks.push({ 
+                        strings: tempStrings, 
+                        chords: tempChord, 
+                        pm: tempPM,
+                        measureNums: tempMeasureNums,
+                        rhythmStems: tempRhythmStems,
+                        rhythmBeams: tempRhythmBeams
+                    });
                     tempStrings = [];
                     tempChord = null;
                     tempPM = null;
+                    tempMeasureNums = null;
+                    tempRhythmStems = null;
+                    tempRhythmBeams = null;
                 }
                 tempStrings.push(line);
-            } else if (line.startsWith('x|')) {
+            } else if (line.trim().startsWith('x|')) {
                 tempChord = line;
-            } else if (line.startsWith('PM|') || line.startsWith('P.M.|')) {
+            } else if (line.trim().startsWith('PM|') || line.trim().startsWith('P.M.|') || line.includes('PM----|')) {
                 tempPM = line;
+            } else if (line.trim().startsWith('|') && /\d/.test(line)) {
+                // Measure numbers line: | 1 | 2
+                tempMeasureNums = line;
+            } else if (line.includes('|') && !stringRegex.test(line.trim()) && !line.includes('PM') && !/\d/.test(line)) {
+                // Rhythm stems line: | | |
+                tempRhythmStems = line;
+            } else if (line.includes('_')) {
+                // Rhythm beams line: ____
+                tempRhythmBeams = line;
             }
         }
         // Push last block
@@ -256,7 +278,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!tempChord) {
                 tempChord = generateChordLine({ strings: tempStrings });
             }
-            blocks.push({ strings: tempStrings, chords: tempChord, pm: tempPM });
+            blocks.push({ 
+                strings: tempStrings, 
+                chords: tempChord, 
+                pm: tempPM,
+                measureNums: tempMeasureNums,
+                rhythmStems: tempRhythmStems,
+                rhythmBeams: tempRhythmBeams
+            });
         }
         
         return blocks;
@@ -265,7 +294,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderVisualTab(blocks) {
         const FRET_WIDTH = 40; 
         const STRING_SPACING = 40;
-        const TOP_MARGIN = 80; 
+        const TOP_MARGIN = 100; // Increased for measure numbers
         const LEFT_MARGIN = 60; 
         
         // Calculate total width
@@ -277,7 +306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         
         const width = LEFT_MARGIN + (totalSteps * FRET_WIDTH) + 100;
-        const height = TOP_MARGIN + (6 * STRING_SPACING) + 50;
+        const height = TOP_MARGIN + (6 * STRING_SPACING) + 100; // Increased for rhythm
         
         canvas.width = width;
         canvas.height = height;
@@ -300,19 +329,62 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
+        // 0. Draw Measure Numbers (Layer 0)
+        iterateBlocks((block, currentX) => {
+            if (block.measureNums) {
+                const line = block.measureNums;
+                // Format: | 1 | 2
+                // We need to align chars
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (/\d/.test(char)) {
+                        // Find full number
+                        let num = char;
+                        let k = i + 1;
+                        while (k < line.length && /\d/.test(line[k])) {
+                            num += line[k];
+                            k++;
+                        }
+                        
+                        const x = currentX + (i * FRET_WIDTH);
+                        ctx.fillStyle = '#aaa';
+                        ctx.font = 'bold 16px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(num, x, TOP_MARGIN - 50);
+                        
+                        // Skip processed digits
+                        i = k - 1;
+                    } else if (char === '|') {
+                        const x = currentX + (i * FRET_WIDTH);
+                        ctx.strokeStyle = '#444';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(x, TOP_MARGIN - 60);
+                        ctx.lineTo(x, height - 80);
+                        ctx.stroke();
+                    }
+                }
+            }
+        });
+
         // 1. Draw Grid (Strings & Vertical Lines) (Layer 1)
         
-        // Vertical Lines
+        // Vertical Lines (Default grid if no measure bars)
         iterateBlocks((block, currentX) => {
             const blockLength = block.strings[0].length;
             for (let i = 0; i < blockLength; i++) {
-                if (i % 4 === 0) { 
+                // Only draw faint grid if not a measure bar
+                // We check if there is a measure bar at this index in strings
+                let isMeasureBar = false;
+                if (block.strings[0][i] === '|') isMeasureBar = true;
+                
+                if (!isMeasureBar && i % 4 === 0) { 
                     const x = currentX + (i * FRET_WIDTH);
                     ctx.strokeStyle = '#222';
                     ctx.lineWidth = 1;
                     ctx.beginPath();
                     ctx.moveTo(x, TOP_MARGIN);
-                    ctx.lineTo(x, height);
+                    ctx.lineTo(x, TOP_MARGIN + (5 * STRING_SPACING));
                     ctx.stroke();
                 }
             }
@@ -322,32 +394,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         iterateBlocks((block, currentX) => {
             if (block.pm) {
                 const pmLine = block.pm;
-                // PM|--...
-                // We look for '-' or other chars indicating PM
-                // Usually PM|-------|
-                // We can just draw a line where there are non-space chars after the prefix
-                
-                // Find start and end of PM segments
+                // PM----|
                 let inPM = false;
                 let startIdx = -1;
                 
-                // Prefix length is usually 3 ("PM|") or more.
-                // We should align with the string length.
-                // Assuming PM line length matches string line length.
-                
                 for (let i = 0; i < pmLine.length; i++) {
                     const char = pmLine[i];
-                    // Skip prefix "PM|"
-                    if (i < 3) continue; 
                     
-                    const isPMChar = char !== ' ' && char !== '|'; // Assuming spaces mean no PM
-                    
-                    if (isPMChar && !inPM) {
+                    if ((char === 'P' || char === 'M' || char === '-') && !inPM) {
                         inPM = true;
                         startIdx = i;
-                    } else if (!isPMChar && inPM) {
+                    } else if (char === '|' && inPM) {
                         inPM = false;
-                        // Draw PM line from startIdx to i
+                        // Draw PM line
                         const startX = currentX + (startIdx * FRET_WIDTH);
                         const endX = currentX + (i * FRET_WIDTH);
                         
@@ -360,30 +419,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ctx.stroke();
                         ctx.setLineDash([]);
                         
+                        // Draw vertical end
+                        ctx.beginPath();
+                        ctx.moveTo(endX, TOP_MARGIN - 20);
+                        ctx.lineTo(endX, TOP_MARGIN - 10);
+                        ctx.stroke();
+
                         ctx.fillStyle = '#888';
                         ctx.font = 'bold 12px Arial';
                         ctx.textAlign = 'left';
                         ctx.fillText("P.M.", startX, TOP_MARGIN - 25);
+                    } else if (char === ' ' && inPM) {
+                         // End of PM without bar?
+                         inPM = false;
+                         const startX = currentX + (startIdx * FRET_WIDTH);
+                         const endX = currentX + (i * FRET_WIDTH);
+                         
+                         ctx.strokeStyle = '#888';
+                         ctx.lineWidth = 2;
+                         ctx.setLineDash([5, 5]);
+                         ctx.beginPath();
+                         ctx.moveTo(startX, TOP_MARGIN - 20);
+                         ctx.lineTo(endX, TOP_MARGIN - 20);
+                         ctx.stroke();
+                         ctx.setLineDash([]);
+                         
+                         ctx.fillStyle = '#888';
+                         ctx.font = 'bold 12px Arial';
+                         ctx.textAlign = 'left';
+                         ctx.fillText("P.M.", startX, TOP_MARGIN - 25);
                     }
-                }
-                // If still in PM at end of line
-                if (inPM) {
-                    const startX = currentX + (startIdx * FRET_WIDTH);
-                    const endX = currentX + (pmLine.length * FRET_WIDTH);
-                    
-                    ctx.strokeStyle = '#888';
-                    ctx.lineWidth = 2;
-                    ctx.setLineDash([5, 5]);
-                    ctx.beginPath();
-                    ctx.moveTo(startX, TOP_MARGIN - 20);
-                    ctx.lineTo(endX, TOP_MARGIN - 20);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                    
-                    ctx.fillStyle = '#888';
-                    ctx.font = 'bold 12px Arial';
-                    ctx.textAlign = 'left';
-                    ctx.fillText("P.M.", startX, TOP_MARGIN - 25);
                 }
             }
         });
@@ -404,6 +469,60 @@ document.addEventListener('DOMContentLoaded', async () => {
             ctx.textAlign = 'left'; // Reset alignment
             ctx.fillText(stringNames[s], 10, y + 7);
         }
+        
+        // Draw Rhythm (Layer 4 - Bottom)
+        iterateBlocks((block, currentX) => {
+            const bottomY = TOP_MARGIN + (5 * STRING_SPACING) + 40;
+            
+            if (block.rhythmStems) {
+                const line = block.rhythmStems;
+                for (let i = 0; i < line.length; i++) {
+                    if (line[i] === '|') {
+                        const x = currentX + (i * FRET_WIDTH);
+                        ctx.strokeStyle = '#666';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(x, bottomY);
+                        ctx.lineTo(x, bottomY + 30);
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            if (block.rhythmBeams) {
+                const line = block.rhythmBeams;
+                let inBeam = false;
+                let startIdx = -1;
+                
+                for (let i = 0; i < line.length; i++) {
+                    if (line[i] === '_' && !inBeam) {
+                        inBeam = true;
+                        startIdx = i;
+                    } else if (line[i] !== '_' && inBeam) {
+                        inBeam = false;
+                        const startX = currentX + (startIdx * FRET_WIDTH);
+                        const endX = currentX + ((i-1) * FRET_WIDTH); // Connect to previous stem
+                        
+                        ctx.strokeStyle = '#666';
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.moveTo(startX, bottomY + 30);
+                        ctx.lineTo(endX, bottomY + 30);
+                        ctx.stroke();
+                    }
+                }
+                if (inBeam) {
+                     const startX = currentX + (startIdx * FRET_WIDTH);
+                     const endX = currentX + ((line.length-1) * FRET_WIDTH);
+                     ctx.strokeStyle = '#666';
+                     ctx.lineWidth = 4;
+                     ctx.beginPath();
+                     ctx.moveTo(startX, bottomY + 30);
+                     ctx.lineTo(endX, bottomY + 30);
+                     ctx.stroke();
+                }
+            }
+        });
 
         // 2. Draw Chord Blocks (Layer 2)
         iterateBlocks((block, currentX) => {
