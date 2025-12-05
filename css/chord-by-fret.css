@@ -140,15 +140,57 @@ input:focus {
   color: var(--muted);
 }
 
+/* Mobile Optimizations */
 @media (max-width: 600px) {
   .app {
     padding: 18px 16px 16px;
     border-radius: 20px;
   }
 
-  .string-row,
-  .strings-header {
-    grid-template-columns: 60px 1fr 1fr 70px;
+  .strings-header,
+  .string-row {
+    /* Reduce fixed column widths: String (50px), Tuning (1fr), Fret (1fr), Note (60px) */
+    grid-template-columns: 50px 1fr 1fr 60px;
+    gap: 4px;
+  }
+
+  .strings-container {
+    padding: 8px;
+  }
+
+  .string-label {
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .string-tuning,
+  .fret-input,
+  .string-note {
+    font-size: 12px;
+    padding: 4px;
+    height: 32px; /* Ensure touch target size */
+  }
+
+  /* Adjust header text */
+  .strings-header div {
+    font-size: 9px;
+  }
+
+  /* Stack the tuning name controls */
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .controls input[type="text"] {
+    width: 100%;
+  }
+
+  #saveTuningButton {
+    width: 100%;
+    justify-content: center;
   }
 }
 

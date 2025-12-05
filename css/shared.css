@@ -237,3 +237,32 @@ input {
   font-weight: 500;
 }
 
+/* Mobile Optimizations */
+@media (max-width: 600px) {
+  body {
+    padding: 12px;
+    align-items: flex-start; /* Allow scrolling from top */
+  }
+
+  .app {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .back-button {
+    top: 12px;
+    left: 12px;
+    width: 36px;
+    height: 36px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    margin-top: 2rem; /* Space for back button */
+  }
+
+  .subtitle {
+    font-size: 0.9rem;
+  }
+}
+
