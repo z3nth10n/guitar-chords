@@ -1,4 +1,32 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // Language Selector Logic
+    const langSelect = document.getElementById("langSelect");
+    
+    // Detect browser language or saved language
+    const browserLang = navigator.language || navigator.userLanguage || "en";
+    let userLang = browserLang.startsWith("es") ? "es" : "en";
+    
+    const savedLang = localStorage.getItem("portal_selectedLang");
+    if (savedLang) {
+        userLang = savedLang;
+    }
+    
+    if (langSelect) {
+        langSelect.value = userLang;
+        langSelect.addEventListener("change", (e) => {
+            const newLang = e.target.value;
+            localStorage.setItem("portal_selectedLang", newLang);
+            if (window.loadTranslations) {
+                window.loadTranslations(newLang);
+            }
+        });
+    }
+    
+    // Initial load
+    if (window.loadTranslations) {
+        window.loadTranslations(userLang);
+    }
+
     const selectionContainer = document.getElementById('selection-container');
     const playerContainer = document.getElementById('player-container');
     const backButton = document.getElementById('back-to-selection');
