@@ -10,6 +10,8 @@ window.translations_es = {
   label_sound_profile: "Sonido:",
   sound_clean: "Guitarra Limpia",
   sound_jazz: "Guitarra Jazz",
+  sound_dist1: "Distorsión 1",
+  sound_dist2: "Distorsión 2",
   label_show_octave: "Mostrar Octava",
   btn_back: "Volver",
   label_root: "Tónica",

@@ -10,6 +10,8 @@ window.translations_en = {
   label_sound_profile: "Sound:",
   sound_clean: "Clean Guitar",
   sound_jazz: "Jazz Guitar",
+  sound_dist1: "Distortion 1",
+  sound_dist2: "Distortion 2",
   label_show_octave: "Show Octave",
   btn_back: "Back",
   label_root: "Root",
