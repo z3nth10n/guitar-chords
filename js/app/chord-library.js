@@ -61,7 +61,7 @@ const CHORD_SHAPES = {
       rootString: 5,
       offsets: [MUTE, 0, 2, 2, 2, 0],
       fingers: [0, 1, 3, 4, 2, 1],
-      bar: { finger: 1, strings: [1, 5], offset: 0 },
+      bar: { finger: 1, strings: [1, 6], offset: 0 },
     },
   ],
   5: [
@@ -115,7 +115,7 @@ const CHORD_SHAPES = {
       rootString: 5,
       offsets: [MUTE, 0, 2, 1, 2, 0],
       fingers: [0, 1, 3, 2, 4, 1],
-      bar: { finger: 1, strings: [1, 5], offset: 0 },
+      bar: { finger: 1, strings: [1, 6], offset: 0 },
     },
   ],
   9: [
@@ -444,8 +444,8 @@ const CHORD_OVERRIDES = {
       fingers: [0, 3, 2, 0, 1, 0],
     },
     G: {
-      frets: [3, 2, 0, 0, 3, 3],
-      fingers: [2, 1, 0, 0, 3, 4],
+      frets: [3, 2, 0, 0, 0, 3],
+      fingers: [2, 1, 0, 0, 0, 3],
     },
     D: {
       frets: [-1, -1, 0, 2, 3, 2],
@@ -465,7 +465,7 @@ const CHORD_OVERRIDES = {
       bar: { finger: 1, strings: [1, 6], fret: 1 },
     },
     B: {
-      frets: [-1, 2, 4, 4, 4, 2],
+      frets: [MUTE, 2, 4, 4, 4, 2],
       fingers: [0, 1, 2, 3, 4, 1],
       bar: { finger: 1, strings: [1, 6], fret: 2 },
     },
@@ -541,7 +541,9 @@ function applyOverrides(data) {
   Object.entries(CHORD_OVERRIDES).forEach(([type, chords]) => {
     Object.entries(chords).forEach(([root, shape]) => {
       if (!data[root]) data[root] = {};
-      data[root][type] = [shape];
+      const overrides = Array.isArray(shape) ? shape : [shape];
+      const existing = data[root][type] || [];
+      data[root][type] = [...overrides, ...existing];
     });
   });
 }
