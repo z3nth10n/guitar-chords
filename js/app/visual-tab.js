@@ -1,6 +1,9 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // Language Selector Logic
+    let currentNotation = "english";
+
+    // Language & Notation Selector Logic
     const langSelect = document.getElementById("langSelect");
+    const notationSelect = document.getElementById("notationSelect");
     
     // Detect browser language or saved language
     const browserLang = navigator.language || navigator.userLanguage || "en";
@@ -10,6 +13,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (savedLang) {
         userLang = savedLang;
     }
+
+    // Notation Logic
+    const savedNotation = localStorage.getItem("portal_notation");
+    if (savedNotation) {
+        currentNotation = savedNotation;
+    } else {
+        // Default based on language
+        currentNotation = userLang === "es" ? "latin" : "english";
+    }
+    
+    if (notationSelect) {
+        notationSelect.value = currentNotation;
+        notationSelect.addEventListener("change", (e) => {
+            currentNotation = e.target.value;
+            localStorage.setItem("portal_notation", currentNotation);
+            // Re-render if a tab is active
+            if (currentTab) {
+                playTab(currentTab);
+            }
+        });
+    }
     
     if (langSelect) {
         langSelect.value = userLang;
@@ -18,6 +42,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem("portal_selectedLang", newLang);
             if (window.loadTranslations) {
                 window.loadTranslations(newLang);
+            }
+
+            // Auto-switch notation
+            if (newLang === "es") {
+                currentNotation = "latin";
+            } else {
+                currentNotation = "english";
+            }
+            if (notationSelect) {
+                notationSelect.value = currentNotation;
+            }
+            localStorage.setItem("portal_notation", currentNotation);
+            
+            // Re-render if a tab is active
+            if (currentTab) {
+                playTab(currentTab);
             }
         });
     }
@@ -495,6 +535,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Chord Detection Logic ---
     const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const NOTE_NAMES_LATIN = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
+    
     const STANDARD_TUNING_MIDI = [64, 59, 55, 50, 45, 40]; // E4, B3, G3, D3, A2, E2
 
     const CHORD_PATTERNS = [
@@ -511,7 +553,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     ];
 
     function getNoteName(midi) {
-        return NOTE_NAMES[midi % 12];
+        const pc = midi % 12;
+        return currentNotation === "latin" ? NOTE_NAMES_LATIN[pc] : NOTE_NAMES[pc];
     }
 
     function detectChord(notePcs) {

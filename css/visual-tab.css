@@ -193,6 +193,8 @@ canvas {
   top: 20px;
   right: 20px;
   z-index: 10;
+  display: flex;
+  gap: 10px;
 }
 
 .lang-selector select {
@@ -231,7 +233,8 @@ canvas {
     top: 0;
     left: 0;
     margin-bottom: 10px;
-    display: inline-block;
+    display: flex;
+    justify-content: flex-start;
   }
   
   .lang-selector select {
