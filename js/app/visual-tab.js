@@ -130,6 +130,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const lines = text.split('\n');
         let song = 'Unknown Song';
         let artist = 'Unknown Artist';
+        let bpm = null;
+        let timeSig = null;
         
         lines.forEach(line => {
             const lower = line.toLowerCase();
@@ -139,8 +141,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (lower.startsWith('artista:') || lower.startsWith('artist:')) {
                 artist = line.split(':')[1].trim();
             }
+            if (lower.startsWith('bpm:')) {
+                bpm = line.split(':')[1].trim();
+            }
+            if (lower.startsWith('time:') || lower.startsWith('tiempo:')) {
+                timeSig = line.split(':')[1].trim();
+            }
         });
-        return { song, artist };
+        return { song, artist, bpm, timeSig };
     }
 
     function renderAccordion(tabs) {
@@ -202,7 +210,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.history.pushState({}, '', url);
 
         document.getElementById('current-song-title').textContent = tab.song;
-        document.getElementById('current-artist-name').textContent = tab.artist;
+        let artistText = tab.artist;
+        if (tab.bpm) artistText += ` | BPM: ${tab.bpm}`;
+        if (tab.timeSig) artistText += ` | Time: ${tab.timeSig}`;
+        document.getElementById('current-artist-name').textContent = artistText;
 
         const parsedData = parseTabContent(tab.content);
         renderVisualTab(parsedData);
@@ -211,40 +222,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     function parseTabContent(text) {
         const lines = text.split('\n');
         const blocks = [];
-        let currentBlock = { strings: [], chords: null };
+        // Block structure: { strings: [], chords: null, pm: null }
         
         // Regex for tab lines: e|-... or e -... or just starting with string name and |
         const stringRegex = /^[eBGDAE]\|/; 
         
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trimEnd(); // Keep indentation? Usually tabs are left aligned.
-            
-            if (stringRegex.test(line)) {
-                currentBlock.strings.push(line);
-            } else if (line.startsWith('x|')) {
-                currentBlock.chords = line;
-            }
-            
-            // If we have 6 strings, we might be done with this block, 
-            // BUT the chord line might come AFTER.
-            // So we should wait until we hit a non-tab line or end of file?
-            // Or just group them.
-            // A simple heuristic: if we have 6 strings and encounter a blank line or a new string line, push block.
-            // But the chord line is part of the block.
-            
-            // Let's try this:
-            // If we encounter a string line and we already have 6 strings, push the previous block.
-            if (stringRegex.test(line) && currentBlock.strings.length > 6) {
-                 // This shouldn't happen if we push immediately after 6? 
-                 // No, because we need to wait for the chord line.
-            }
-        }
-        
-        // Re-implementing block parsing to be more robust
-        // Iterate lines, collect groups of 6 strings + optional chord line
-        
         let tempStrings = [];
         let tempChord = null;
+        let tempPM = null;
         
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
@@ -254,13 +239,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (!tempChord) {
                         tempChord = generateChordLine({ strings: tempStrings });
                     }
-                    blocks.push({ strings: tempStrings, chords: tempChord });
+                    blocks.push({ strings: tempStrings, chords: tempChord, pm: tempPM });
                     tempStrings = [];
                     tempChord = null;
+                    tempPM = null;
                 }
                 tempStrings.push(line);
             } else if (line.startsWith('x|')) {
                 tempChord = line;
+            } else if (line.startsWith('PM|') || line.startsWith('P.M.|')) {
+                tempPM = line;
             }
         }
         // Push last block
@@ -268,7 +256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!tempChord) {
                 tempChord = generateChordLine({ strings: tempStrings });
             }
-            blocks.push({ strings: tempStrings, chords: tempChord });
+            blocks.push({ strings: tempStrings, chords: tempChord, pm: tempPM });
         }
         
         return blocks;
@@ -326,6 +314,76 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ctx.moveTo(x, TOP_MARGIN);
                     ctx.lineTo(x, height);
                     ctx.stroke();
+                }
+            }
+        });
+
+        // Draw PM Lines (Layer 1.5)
+        iterateBlocks((block, currentX) => {
+            if (block.pm) {
+                const pmLine = block.pm;
+                // PM|--...
+                // We look for '-' or other chars indicating PM
+                // Usually PM|-------|
+                // We can just draw a line where there are non-space chars after the prefix
+                
+                // Find start and end of PM segments
+                let inPM = false;
+                let startIdx = -1;
+                
+                // Prefix length is usually 3 ("PM|") or more.
+                // We should align with the string length.
+                // Assuming PM line length matches string line length.
+                
+                for (let i = 0; i < pmLine.length; i++) {
+                    const char = pmLine[i];
+                    // Skip prefix "PM|"
+                    if (i < 3) continue; 
+                    
+                    const isPMChar = char !== ' ' && char !== '|'; // Assuming spaces mean no PM
+                    
+                    if (isPMChar && !inPM) {
+                        inPM = true;
+                        startIdx = i;
+                    } else if (!isPMChar && inPM) {
+                        inPM = false;
+                        // Draw PM line from startIdx to i
+                        const startX = currentX + (startIdx * FRET_WIDTH);
+                        const endX = currentX + (i * FRET_WIDTH);
+                        
+                        ctx.strokeStyle = '#888';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([5, 5]);
+                        ctx.beginPath();
+                        ctx.moveTo(startX, TOP_MARGIN - 20);
+                        ctx.lineTo(endX, TOP_MARGIN - 20);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        
+                        ctx.fillStyle = '#888';
+                        ctx.font = 'bold 12px Arial';
+                        ctx.textAlign = 'left';
+                        ctx.fillText("P.M.", startX, TOP_MARGIN - 25);
+                    }
+                }
+                // If still in PM at end of line
+                if (inPM) {
+                    const startX = currentX + (startIdx * FRET_WIDTH);
+                    const endX = currentX + (pmLine.length * FRET_WIDTH);
+                    
+                    ctx.strokeStyle = '#888';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(startX, TOP_MARGIN - 20);
+                    ctx.lineTo(endX, TOP_MARGIN - 20);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    
+                    ctx.fillStyle = '#888';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.textAlign = 'left';
+                    ctx.fillText("P.M.", startX, TOP_MARGIN - 25);
                 }
             }
         });
