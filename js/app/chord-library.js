@@ -583,19 +583,19 @@ const audioBuffers = {}; // Map MIDI note -> AudioBuffer
 window.sampleBuffers = {}; // Initialize immediately to avoid undefined checks
 
 const AVAILABLE_SAMPLES = {
-  36: "C2_s1_01.mp3",
-  41: "F2_s1_01.mp3",
-  45: "A2_s2_01.mp3",
-  48: "C3_s2_02.mp3",
-  52: "E3_s3_01.mp3",
-  55: "G3_s4_01.mp3",
-  59: "B3_s5_01.mp3",
-  64: "E4_s6_01.mp3",
-  67: "G4_s6_01.mp3",
-  71: "B4_s6_01.mp3",
-  74: "D5_s6_01.mp3",
-  80: "G#5_s6_03.mp3",
-  85: "C#6_s6_01.mp3",
+  36: "C2.mp3",
+  41: "F2.mp3",
+  45: "A2.mp3",
+  48: "C3.mp3",
+  52: "E3.mp3",
+  55: "G3.mp3",
+  59: "B3.mp3",
+  64: "E4.mp3",
+  67: "G4.mp3",
+  71: "B4.mp3",
+  74: "D5.mp3",
+  80: "G#5.mp3",
+  85: "C#6.mp3",
 };
 
 // --- Initialization ---
