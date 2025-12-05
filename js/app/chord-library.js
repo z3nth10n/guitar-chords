@@ -466,8 +466,8 @@ const CHORD_OVERRIDES = {
     },
     B: {
       frets: [-1, 2, 4, 4, 4, 2],
-      fingers: [0, 1, 3, 4, 4, 1],
-      bar: { finger: 1, strings: [1, 5], fret: 2 },
+      fingers: [0, 1, 2, 3, 4, 1],
+      bar: { finger: 1, strings: [1, 6], fret: 2 },
     },
   },
   min: {
@@ -501,7 +501,7 @@ const CHORD_OVERRIDES = {
     B: {
       frets: [-1, 2, 4, 4, 3, 2],
       fingers: [0, 1, 3, 4, 2, 1],
-      bar: { finger: 1, strings: [1, 5], fret: 2 },
+      bar: { finger: 1, strings: [1, 6], fret: 2 },
     },
   },
   7: {
