@@ -204,77 +204,130 @@ document.addEventListener('DOMContentLoaded', async () => {
         ctx.fillStyle = '#111';
         ctx.fillRect(0, 0, width, height);
         
-        // Draw Strings
-        ctx.lineWidth = 3;
         const stringNames = ['e', 'B', 'G', 'D', 'A', 'E'];
-        // Colors for strings (high e to low E)
         const stringColors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7']; 
+
+        // Helper to iterate blocks and track X
+        function iterateBlocks(callback) {
+            let currentX = LEFT_MARGIN;
+            blocks.forEach(block => {
+                if (block.strings.length === 0) return;
+                const blockLength = block.strings[0].length;
+                callback(block, currentX);
+                currentX += blockLength * FRET_WIDTH;
+            });
+        }
+
+        // 1. Draw Grid (Strings & Vertical Lines) (Layer 1)
         
+        // Vertical Lines
+        iterateBlocks((block, currentX) => {
+            const blockLength = block.strings[0].length;
+            for (let i = 0; i < blockLength; i++) {
+                if (i % 4 === 0) { 
+                    const x = currentX + (i * FRET_WIDTH);
+                    ctx.strokeStyle = '#222';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(x, TOP_MARGIN);
+                    ctx.lineTo(x, height);
+                    ctx.stroke();
+                }
+            }
+        });
+
+        // Horizontal Strings
+        ctx.lineWidth = 3;
         for (let s = 0; s < 6; s++) {
             const y = TOP_MARGIN + (s * STRING_SPACING);
             
-            // Draw string line
             ctx.strokeStyle = '#444';
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(width, y);
             ctx.stroke();
             
-            // Draw String Name
             ctx.fillStyle = stringColors[s];
             ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'left'; // Reset alignment
             ctx.fillText(stringNames[s], 10, y + 7);
         }
-        
-        let currentX = LEFT_MARGIN;
-        
-        blocks.forEach(block => {
-            if (block.strings.length === 0) return;
-            
-            const blockLength = block.strings[0].length;
-            
-            // Draw Chords
+
+        // 2. Draw Chord Blocks (Layer 2)
+        iterateBlocks((block, currentX) => {
             if (block.chords) {
                 const chordLine = block.chords;
-                // Regex to find chords (words)
-                // Example: x|-LAm---------------Rem--LaM
-                // We want to capture the text and its index
                 const chordRegex = /([A-Za-z0-9#]+)/g;
                 let match;
                 while ((match = chordRegex.exec(chordLine)) !== null) {
-                    if (match.index < 2) continue; // Skip prefix
+                    if (match.index < 2) continue; 
                     
                     const charIndex = match.index;
                     const chordName = match[0];
                     const x = currentX + (charIndex * FRET_WIDTH);
                     
-                    // Draw Chord Box
-                    ctx.fillStyle = '#3b82f6';
+                    let minString = 5;
+                    let maxString = 0;
+                    let hasNotes = false;
+
+                    for (let s = 0; s < 6; s++) {
+                        if (s < block.strings.length) {
+                            const char = block.strings[s][charIndex];
+                            if (!isNaN(parseInt(char))) {
+                                if (s < minString) minString = s;
+                                if (s > maxString) maxString = s;
+                                hasNotes = true;
+                            }
+                        }
+                    }
+
+                    if (!hasNotes) {
+                        minString = 0;
+                        maxString = 5;
+                    }
+
+                    const blockTop = TOP_MARGIN + (minString * STRING_SPACING) - 20;
+                    const blockBottom = TOP_MARGIN + (maxString * STRING_SPACING) + 20;
+                    const blockHeight = blockBottom - blockTop;
+                    
+                    const gradient = ctx.createLinearGradient(x, blockTop, x, blockBottom);
+                    gradient.addColorStop(0, '#3b82f6');
+                    gradient.addColorStop(1, '#1d4ed8');
+                    ctx.fillStyle = gradient;
+                    
                     ctx.beginPath();
-                    // Rounded rect
-                    const w = Math.max(40, ctx.measureText(chordName).width + 20);
-                    ctx.roundRect(x - 10, 20, w, 30, 8);
+                    const w = Math.max(50, ctx.measureText(chordName).width + 30);
+                    
+                    ctx.roundRect(x - 15, blockTop, w, blockHeight, 10);
                     ctx.fill();
                     
-                    // Text
-                    ctx.fillStyle = '#fff';
-                    ctx.font = 'bold 16px Arial';
-                    ctx.textAlign = 'left';
-                    ctx.fillText(chordName, x, 41);
-                    
-                    // Draw a line down to the strings to show where it starts?
-                    ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(x, 50);
-                    ctx.lineTo(x, height);
+                    ctx.strokeStyle = '#60a5fa';
+                    ctx.lineWidth = 2;
                     ctx.stroke();
+                    
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                    ctx.shadowBlur = 4;
+                    ctx.fillText(chordName, x + (w/2) - 15, blockTop + (blockHeight/2) + 8);
+                    ctx.shadowBlur = 0;
                 }
             }
-            
-            // Draw Notes
+        });
+        
+        // 3. Draw Notes (Layer 3)
+        iterateBlocks((block, currentX) => {
+            const chordPositions = new Set();
+            if (block.chords) {
+                const chordRegex = /([A-Za-z0-9#]+)/g;
+                let match;
+                while ((match = chordRegex.exec(block.chords)) !== null) {
+                    if (match.index >= 2) chordPositions.add(match.index);
+                }
+            }
+
             for (let s = 0; s < 6; s++) {
-                // Ensure we have this string
                 if (s >= block.strings.length) continue;
                 
                 const line = block.strings[s];
@@ -283,19 +336,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 for (let i = 0; i < line.length; i++) {
                     const char = line[i];
                     const x = currentX + (i * FRET_WIDTH);
-                    
-                    // Draw faint vertical grid lines
-                    if (i % 4 === 0) { // Every 4 chars?
-                         ctx.strokeStyle = '#222';
-                         ctx.lineWidth = 1;
-                         ctx.beginPath();
-                         ctx.moveTo(x, TOP_MARGIN);
-                         ctx.lineTo(x, height);
-                         ctx.stroke();
-                    }
 
                     if (!isNaN(parseInt(char))) {
-                        // Note
+                        if (chordPositions.has(i)) {
+                            continue;
+                        }
+
                         ctx.fillStyle = stringColors[s];
                         ctx.beginPath();
                         ctx.arc(x, y, 16, 0, Math.PI * 2);
@@ -306,13 +352,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ctx.textAlign = 'center';
                         ctx.fillText(char, x, y + 6);
                         
-                        // Glow effect
                         ctx.shadowColor = stringColors[s];
                         ctx.shadowBlur = 10;
                         ctx.stroke();
                         ctx.shadowBlur = 0;
                     } else if (char === 'h' || char === 'p' || char === '/') {
-                        // Effects
                         ctx.fillStyle = '#aaa';
                         ctx.font = 'italic 14px Arial';
                         ctx.textAlign = 'center';
@@ -320,8 +364,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
             }
-            
-            currentX += blockLength * FRET_WIDTH;
         });
     }
     
