@@ -9,6 +9,8 @@ function detectTranslationPrefix() {
     return "chord-by-fret/chord-by-fret";
   } else if (path.indexOf("chord-library.html") !== -1) {
     return "chord-library/chord-library";
+  } else if (path.indexOf("visual-tab.html") !== -1) {
+    return "visual-tab/visual-tab";
   }
   return "index";
 }

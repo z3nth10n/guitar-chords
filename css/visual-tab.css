@@ -1,0 +1,180 @@
+/* Visual Tab Specific Styles */
+
+.selection-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.accordion-item {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.accordion-header {
+  padding: 15px 20px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-alt);
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.accordion-header:hover {
+  background: var(--surface-hover);
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+  background: var(--bg);
+}
+
+.accordion-content.active {
+  max-height: 500px; /* Arbitrary large height */
+  border-top: 1px solid var(--border);
+}
+
+.song-item {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.song-item:last-child {
+  border-bottom: none;
+}
+
+.song-item:hover {
+  background: var(--surface-hover);
+  color: var(--accent);
+}
+
+.song-item .material-icons {
+  margin-right: 10px;
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.player-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.player-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 10px;
+}
+
+.song-info h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--accent);
+}
+
+.song-info p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.canvas-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #111; /* Fretboard dark background */
+  border-radius: 12px;
+  border: 4px solid #333;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+  position: relative;
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) var(--bg-alt);
+}
+
+.canvas-wrapper::-webkit-scrollbar {
+  height: 12px;
+}
+
+.canvas-wrapper::-webkit-scrollbar-track {
+  background: var(--bg-alt);
+}
+
+.canvas-wrapper::-webkit-scrollbar-thumb {
+  background-color: var(--accent);
+  border-radius: 6px;
+  border: 3px solid var(--bg-alt);
+}
+
+canvas {
+  display: block;
+}
+
+.controls-bar {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  background: var(--card-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.legend {
+  display: flex;
+  gap: 15px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-color.note {
+  background: #eab308; /* Yellow/Orange like the image */
+}
+
+.legend-color.chord {
+  background: #3b82f6; /* Blue like the image */
+}
+
+.secondary-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s;
+}
+
+.secondary-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
