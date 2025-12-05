@@ -19,6 +19,7 @@ window.translations_es = {
   tuning_drop_c: "Drop C",
   tuning_drop_b: "Drop B",
   tuning_drop_a: "Drop A",
+  tuning_drop_e: "Drop E",
   tuning_c_std: "C estándar",
   tuning_b_std: "B estándar",
   tuning_a_std: "A estándar",
