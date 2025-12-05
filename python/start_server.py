@@ -18,7 +18,7 @@ socketserver.TCPServer.allow_reuse_address = True
 
 try:
     with socketserver.TCPServer(("", PORT), Handler) as httpd:
-        url = f"http://localhost:{PORT}/chord-library.html"
+        url = f"http://localhost:{PORT}/components/chord-library.html"
         print(f"\n--------------------------------------------------")
         print(f" Servidor iniciado en: {url}")
         print(f" Presiona Ctrl+C en la terminal para detenerlo.")
