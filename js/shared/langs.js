@@ -1,8 +1,10 @@
 window.currentLang = "en";
 window.translations = {};
 
+const ABSOLUTE_PATH = '/music-tools';
+
 function detectTranslationPrefix() {
-  const path = window.location.pathname;
+  const path = `${ABSOLUTE_PATH}/langs`;
   if (path.indexOf("chord-analysis.html") !== -1) {
     return "chord-analysis/chord-analysis";
   } else if (path.indexOf("chord-by-fret.html") !== -1) {

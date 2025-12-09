@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const SONGSTERR_BASE_URL = "https://www.songsterr.com";
     const TABS_API_BASE = "https://tabs.z3nth10n.net";
     const REMOTE_TABS_KEY = "visualTab_remoteTabs";
+    const ABSOLUTE_PATH = '/music-tools';
 
     // Language & Notation Selector Logic
     const langSelect = document.getElementById("langSelect");
@@ -273,7 +274,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function loadTabs() {
         try {
-            const response = await fetch('/music-tools/tabs/manifest.json');
+            const response = await fetch(`${ABSOLUTE_PATH}/tabs/manifest.json`);
             if (!response.ok) throw new Error('Manifest not found');
             const files = await response.json();
             
