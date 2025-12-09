@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Cargar tabs locales desde manifest
             const loadedTabs = await Promise.all(files.map(async (file) => {
                 try {
-                    const res = await fetch(`tabs/${file}`);
+                    const res = await fetch(`${ABSOLUTE_PATH}/tabs/${file}`);
                     const text = await res.text();
                     const metadata = parseMetadata(text);
                     return { id: file, file, ...metadata, content: text, isRemote: false };
