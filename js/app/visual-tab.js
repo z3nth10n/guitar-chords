@@ -1,6 +1,10 @@
 document.addEventListener('DOMContentLoaded', async () => {
     let currentNotation = "english";
 
+    const SONGSTERR_BASE_URL = "https://www.songsterr.com";
+    const TABS_API_BASE = "https://tabs.z3nth10n.net";
+    const REMOTE_TABS_KEY = "visualTab_remoteTabs";
+
     // Language & Notation Selector Logic
     const langSelect = document.getElementById("langSelect");
     const notationSelect = document.getElementById("notationSelect");
@@ -73,6 +77,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const canvas = document.getElementById('tab-canvas');
     const ctx = canvas.getContext('2d');
 
+    const accordionContainer = document.getElementById('accordion-container');
+    const searchInput = document.getElementById('songsterr-search');
+    const searchResults = document.getElementById('search-results');
+
     let currentTab = null;
     let tabsData = [];
 
@@ -89,19 +97,193 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.history.pushState({}, '', url);
     });
 
+    function kebabCase(str) {
+        return str
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // quitar acentos
+            .replace(/[^a-zA-Z0-9\s]/g, " ")                  // no alfanum -> espacio
+            .trim()
+            .replace(/\s+/g, "-")
+            .toLowerCase();
+    }
+
+    function buildTabUrlFromMetadata(meta) {
+        const urlPrefix = `${SONGSTERR_BASE_URL}/a/wsa/`;
+        const urlSuffixParts = [meta.artist, meta.title, "tab"];
+        const urlSuffix = kebabCase(urlSuffixParts.join(" "));
+        return `${urlPrefix}${urlSuffix}-s${meta.songId}`;
+    }
+
+    function loadRemoteTabsCache() {
+        try {
+            const raw = localStorage.getItem(REMOTE_TABS_KEY);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            console.error("Error reading remote tabs cache", e);
+            return [];
+        }
+    }
+
+    function saveRemoteTabsCache(list) {
+        try {
+            localStorage.setItem(REMOTE_TABS_KEY, JSON.stringify(list));
+        } catch (e) {
+            console.error("Error saving remote tabs cache", e);
+        }
+    }
+
+    function ensureRemoteTabEntry(songMeta) {
+        // songMeta: { songId, artist, title }
+        const cache = loadRemoteTabsCache();
+        const id = `s${songMeta.songId}`;
+        let entry = cache.find(e => e.id === id);
+        const url = buildTabUrlFromMetadata(songMeta);
+
+        if (!entry) {
+            entry = {
+                id,
+                songId: songMeta.songId,
+                artist: songMeta.artist,
+                title: songMeta.title,
+                url
+            };
+            cache.push(entry);
+        } else {
+            // actualizamos por si han cambiado slug / título
+            entry.url = url;
+            entry.artist = songMeta.artist;
+            entry.title = songMeta.title;
+        }
+        saveRemoteTabsCache(cache);
+        return entry;
+    }
+
+    function hydrateRemoteTabsIntoTabsData() {
+        const cache = loadRemoteTabsCache();
+        const remoteTabs = cache.map(entry => ({
+            id: `remote:${entry.id}`,   // esto se usará en ?tab=
+            file: null,
+            song: entry.title,
+            artist: entry.artist,
+            bpm: null,
+            timeSig: null,
+            isRemote: true,
+            remoteId: entry.id,
+            remoteUrl: entry.url,
+            content: null
+        }));
+        tabsData = tabsData.concat(remoteTabs);
+    }
+
+    let searchTimeout = null;
+
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            const value = searchInput.value.trim();
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            if (value.length < 3) {
+                searchResults.innerHTML = '';
+                return;
+            }
+            searchTimeout = setTimeout(() => {
+                performSongsterrSearch(value);
+            }, 300);
+        });
+    }
+
+    async function performSongsterrSearch(query) {
+        // ATENCIÓN: ahora llamamos a nuestra propia API, no directamente a Songsterr
+        const url = `${TABS_API_BASE}/songsterr-search?size=10&pattern=${encodeURIComponent(query)}`;
+        try {
+            searchResults.innerHTML = '<div class="search-item">Searching...</div>';
+            const res = await fetch(url);
+            if (!res.ok) {
+                throw new Error(`Songsterr proxy API error: ${res.status}`);
+            }
+            const data = await res.json();
+            renderSearchResults(data);
+        } catch (e) {
+            console.error("Songsterr search failed", e);
+            searchResults.innerHTML = '<div class="search-item error">Error searching in Songsterr</div>';
+        }
+    }
+
+    function renderSearchResults(results) {
+        if (!Array.isArray(results) || results.length === 0) {
+            searchResults.innerHTML = '<div class="search-item empty">No results</div>';
+            return;
+        }
+        searchResults.innerHTML = '';
+        results.forEach(song => {
+            const div = document.createElement('div');
+            div.className = 'search-item';
+            const guitars = (song.tracks || []).filter(t => t.instrument && t.instrument.toLowerCase().includes('guitar'));
+            const guitarNames = guitars.map(t => t.name || t.instrument).join(', ');
+            div.innerHTML = `
+                <div class="search-main">
+                    <span class="material-icons">music_note</span>
+                    <span class="search-title">${song.title}</span>
+                </div>
+                <div class="search-sub">
+                    <span>${song.artist}</span>
+                    ${guitarNames ? `<span class="search-instrument">${guitarNames}</span>` : ''}
+                </div>
+            `;
+            div.addEventListener('click', () => {
+                handleSongsterrSelection(song);
+                searchResults.innerHTML = '';
+                searchInput.value = `${song.artist} - ${song.title}`;
+            });
+            searchResults.appendChild(div);
+        });
+    }
+
+    async function handleSongsterrSelection(songMeta) {
+        // Guardar/actualizar entrada en la caché local
+        const entry = ensureRemoteTabEntry({
+            songId: songMeta.songId,
+            artist: songMeta.artist,
+            title: songMeta.title
+        });
+
+        // Buscar si ya existe en tabsData
+        let tab = tabsData.find(t => t.id === `remote:${entry.id}`);
+        if (!tab) {
+            tab = {
+                id: `remote:${entry.id}`,
+                file: null,
+                song: entry.title,
+                artist: entry.artist,
+                bpm: null,
+                timeSig: null,
+                isRemote: true,
+                remoteId: entry.id,
+                remoteUrl: entry.url,
+                content: null
+            };
+            tabsData.push(tab);
+            renderAccordion(tabsData); // que aparezca en el acordeón
+        }
+
+        await playTab(tab); // cargarla y reproducirla
+    }
+
     async function loadTabs() {
         try {
             const response = await fetch('tabs/manifest.json');
             if (!response.ok) throw new Error('Manifest not found');
             const files = await response.json();
             
-            // Fetch each file to get metadata
+            // Cargar tabs locales desde manifest
             const loadedTabs = await Promise.all(files.map(async (file) => {
                 try {
                     const res = await fetch(`tabs/${file}`);
                     const text = await res.text();
                     const metadata = parseMetadata(text);
-                    return { file, ...metadata, content: text };
+                    return { id: file, file, ...metadata, content: text, isRemote: false };
                 } catch (e) {
                     console.error(`Error loading ${file}`, e);
                     return null;
@@ -109,20 +291,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             }));
 
             tabsData = loadedTabs.filter(t => t !== null);
+
+            // Añadir tabs remotas desde localStorage a tabsData
+            hydrateRemoteTabsIntoTabsData();
+
             renderAccordion(tabsData);
 
-            // Check for query param
+            // Comprobar query param ?tab=
             const urlParams = new URLSearchParams(window.location.search);
             const tabParam = urlParams.get('tab');
             if (tabParam) {
-                const found = tabsData.find(t => t.file === tabParam);
+                const found = tabsData.find(t =>
+                    t.id === tabParam || t.file === tabParam
+                );
                 if (found) {
-                    playTab(found);
+                    await playTab(found);
+                } else {
+                    console.warn("Tab from URL not found:", tabParam);
                 }
             }
         } catch (e) {
             console.error(e);
-            selectionContainer.innerHTML = `<div class="error">Error loading tabs. Please ensure tabs/manifest.json exists.</div>`;
+            accordionContainer.innerHTML = `<div class="error">Error loading tabs. Please ensure tabs/manifest.json exists.</div>`;
         }
     }
 
@@ -152,7 +342,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderAccordion(tabs) {
-        // Group by artist
+        // Agrupar por artista
         const byArtist = {};
         tabs.forEach(tab => {
             const artistName = tab.artist || 'Unknown Artist';
@@ -160,10 +350,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             byArtist[artistName].push(tab);
         });
 
-        selectionContainer.innerHTML = '';
+        accordionContainer.innerHTML = '';
         
         if (Object.keys(byArtist).length === 0) {
-            selectionContainer.innerHTML = '<div class="error">No tabs found.</div>';
+            accordionContainer.innerHTML = '<div class="error">No tabs found.</div>';
             return;
         }
 
@@ -182,38 +372,78 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const songItem = document.createElement('div');
                 songItem.className = 'song-item';
                 songItem.innerHTML = `<span class="material-icons">music_note</span> ${tab.song}`;
-                songItem.onclick = () => playTab(tab);
+                songItem.onclick = () => { playTab(tab); };
                 content.appendChild(songItem);
             });
 
             header.onclick = () => {
                 const isActive = content.classList.contains('active');
-                // Close all others
                 document.querySelectorAll('.accordion-content').forEach(c => c.classList.remove('active'));
                 if (!isActive) content.classList.add('active');
             };
 
             artistGroup.appendChild(header);
             artistGroup.appendChild(content);
-            selectionContainer.appendChild(artistGroup);
+            accordionContainer.appendChild(artistGroup);
         });
     }
 
-    function playTab(tab) {
+    async function playTab(tab) {
         currentTab = tab;
         selectionContainer.style.display = 'none';
         playerContainer.style.display = 'flex';
-        
-        // Update URL
+
+        // Si es remota y aún no tenemos contenido, lo pedimos a la API
+        if (tab.isRemote && !tab.content) {
+            try {
+                const apiUrl = `${TABS_API_BASE}/tab?url=${encodeURIComponent(tab.remoteUrl)}`;
+                const res = await fetch(apiUrl);
+                if (!res.ok) {
+                    throw new Error(`tabs API error: ${res.status}`);
+                }
+                const data = await res.json();
+                tab.content = data.tab;
+
+                // Actualizar metadatos desde el propio texto
+                const meta = parseMetadata(tab.content);
+                tab.song = meta.song || tab.song;
+                tab.artist = meta.artist || tab.artist;
+                tab.bpm = meta.bpm;
+                tab.timeSig = meta.timeSig;
+
+                // Persistir cambios mínimos en la caché (título/artista)
+                const cache = loadRemoteTabsCache();
+                const idx = cache.findIndex(e => `remote:${e.id}` === tab.id);
+                if (idx !== -1) {
+                    cache[idx].title = tab.song;
+                    cache[idx].artist = tab.artist;
+                    saveRemoteTabsCache(cache);
+                }
+            } catch (e) {
+                console.error("Error fetching remote tab", e);
+                alert("Error downloading tab from server.");
+                return;
+            }
+        }
+
+        // Actualizar URL (?tab=<id>)
         const url = new URL(window.location);
-        url.searchParams.set('tab', tab.file);
+        const idForUrl = tab.id || tab.file;
+        if (idForUrl) {
+            url.searchParams.set('tab', idForUrl);
+        }
         window.history.pushState({}, '', url);
 
         document.getElementById('current-song-title').textContent = tab.song;
-        let artistText = tab.artist;
+        let artistText = tab.artist || '';
         if (tab.bpm) artistText += ` | BPM: ${tab.bpm}`;
         if (tab.timeSig) artistText += ` | Time: ${tab.timeSig}`;
         document.getElementById('current-artist-name').textContent = artistText;
+
+        if (!tab.content) {
+            console.warn("Tab has no content to render");
+            return;
+        }
 
         const parsedData = parseTabContent(tab.content);
         renderVisualTab(parsedData);
@@ -470,56 +700,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             ctx.fillText(stringNames[s], 10, y + 7);
         }
         
-        // Draw Rhythm (Layer 4 - Bottom)
+        // Draw Rhythm / Time Figures (Layer 4 - Bottom)
         iterateBlocks((block, currentX) => {
             const bottomY = TOP_MARGIN + (5 * STRING_SPACING) + 40;
             
             if (block.rhythmStems) {
                 const line = block.rhythmStems;
                 for (let i = 0; i < line.length; i++) {
-                    if (line[i] === '|') {
-                        const x = currentX + (i * FRET_WIDTH);
+                    const ch = line[i];
+                    const x = currentX + (i * FRET_WIDTH);
+
+                    if (ch === '|') {
+                        // pequeña barra separadora bajo el pentagrama
                         ctx.strokeStyle = '#666';
                         ctx.lineWidth = 2;
                         ctx.beginPath();
-                        ctx.moveTo(x, bottomY);
-                        ctx.lineTo(x, bottomY + 30);
+                        ctx.moveTo(x, bottomY - 10);
+                        ctx.lineTo(x, bottomY + 20);
                         ctx.stroke();
+                    } else if (ch !== ' ') {
+                        // símbolo de la figura (n, c, s, b, h, r, etc.)
+                        ctx.fillStyle = '#bbb';
+                        ctx.font = 'bold 14px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(ch, x, bottomY);
                     }
-                }
-            }
-            
-            if (block.rhythmBeams) {
-                const line = block.rhythmBeams;
-                let inBeam = false;
-                let startIdx = -1;
-                
-                for (let i = 0; i < line.length; i++) {
-                    if (line[i] === '_' && !inBeam) {
-                        inBeam = true;
-                        startIdx = i;
-                    } else if (line[i] !== '_' && inBeam) {
-                        inBeam = false;
-                        const startX = currentX + (startIdx * FRET_WIDTH);
-                        const endX = currentX + ((i-1) * FRET_WIDTH); // Connect to previous stem
-                        
-                        ctx.strokeStyle = '#666';
-                        ctx.lineWidth = 4;
-                        ctx.beginPath();
-                        ctx.moveTo(startX, bottomY + 30);
-                        ctx.lineTo(endX, bottomY + 30);
-                        ctx.stroke();
-                    }
-                }
-                if (inBeam) {
-                     const startX = currentX + (startIdx * FRET_WIDTH);
-                     const endX = currentX + ((line.length-1) * FRET_WIDTH);
-                     ctx.strokeStyle = '#666';
-                     ctx.lineWidth = 4;
-                     ctx.beginPath();
-                     ctx.moveTo(startX, bottomY + 30);
-                     ctx.lineTo(endX, bottomY + 30);
-                     ctx.stroke();
                 }
             }
         });

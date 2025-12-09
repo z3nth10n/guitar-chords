@@ -33,8 +33,19 @@
     <p class="subtitle" data-i18n="tool_visual_tab_desc">Visualize your favorite tabs in a new way.</p>
 
     <div class="selection-container" id="selection-container">
-      <!-- Accordion will be injected here -->
-      <div class="loading-spinner" data-i18n="loading">Loading tabs...</div>
+      <div class="search-area">
+        <input
+          id="songsterr-search"
+          type="text"
+          placeholder="Search on Songsterr..."
+          autocomplete="off"
+        />
+        <div id="search-results" class="search-results"></div>
+      </div>
+
+      <div id="accordion-container">
+        <div class="loading-spinner" data-i18n="loading">Loading tabs...</div>
+      </div>
     </div>
 
     <div class="player-container" id="player-container" style="display: none;">

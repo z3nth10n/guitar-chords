@@ -226,6 +226,75 @@ canvas {
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
+/* Search Area Styles */
+.search-area {
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.search-area input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  color: var(--text);
+  outline: none;
+}
+
+.search-area input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.search-results {
+  margin-top: 4px;
+  background: var(--card-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.search-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.search-item:last-child {
+  border-bottom: none;
+}
+
+.search-item:hover {
+  background: var(--surface-hover);
+}
+
+.search-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.search-sub {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.search-item .material-icons {
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.search-instrument {
+  font-style: italic;
+}
+
 /* Mobile adjustment */
 @media (max-width: 600px) {
   .lang-selector {
