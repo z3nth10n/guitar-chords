@@ -1,7 +1,7 @@
 window.currentLang = "en";
 window.translations = {};
 
-const ABSOLUTE_PATH = '/music-tools';
+const ABSOLUTE_PATH = getAbsolutePath();
 
 function detectTranslationPrefix() {
   const path = `${ABSOLUTE_PATH}/langs`;
