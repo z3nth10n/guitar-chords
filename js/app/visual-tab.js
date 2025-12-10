@@ -1,33 +1,39 @@
 window.onerror = function (message, source, lineno, colno, error) {
-    console.error("Global error:", message, "at", source + ":" + lineno + ":" + colno, error);
+  console.error(
+    "Global error:",
+    message,
+    "at",
+    source + ":" + lineno + ":" + colno,
+    error
+  );
 };
 
 window.addEventListener("unhandledrejection", (event) => {
-    console.error("Unhandled promise rejection:", event.reason);
+  console.error("Unhandled promise rejection:", event.reason);
 });
 
 function drawErrorOnCanvas(msg) {
-    // Canvas base + wrapper para multi-chunk
-    const canvasWrapper = document.querySelector(".canvas-wrapper");
-    const baseCanvas = document.getElementById("tab-canvas");
+  // Canvas base + wrapper para multi-chunk
+  const canvasWrapper = document.querySelector(".canvas-wrapper");
+  const baseCanvas = document.getElementById("tab-canvas");
 
-    if (!canvasWrapper || !baseCanvas) return;
+  if (!canvasWrapper || !baseCanvas) return;
 
-    canvasWrapper.innerHTML = "";
-    const errorCanvas = baseCanvas;
-    errorCanvas.width = 800;
-    errorCanvas.height = 200;
-    canvasWrapper.appendChild(errorCanvas);
+  canvasWrapper.innerHTML = "";
+  const errorCanvas = baseCanvas;
+  errorCanvas.width = 800;
+  errorCanvas.height = 200;
+  canvasWrapper.appendChild(errorCanvas);
 
-    // Reasignamos globales para que funcionen otras cosas si fuera necesario
-    // aunque aquí solo pintamos el error
-    const ctx = errorCanvas.getContext("2d");
+  // Reasignamos globales para que funcionen otras cosas si fuera necesario
+  // aunque aquí solo pintamos el error
+  const ctx = errorCanvas.getContext("2d");
 
-    ctx.fillStyle = "#200";
-    ctx.fillRect(0, 0, errorCanvas.width, errorCanvas.height);
-    ctx.fillStyle = "#f88";
-    ctx.font = "16px monospace";
-    ctx.fillText(msg, 10, 50);
+  ctx.fillStyle = "#200";
+  ctx.fillRect(0, 0, errorCanvas.width, errorCanvas.height);
+  ctx.fillStyle = "#f88";
+  ctx.font = "16px monospace";
+  ctx.fillText(msg, 10, 50);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -631,7 +637,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       const bars = [];
       for (let i = 0; i < barPositions.length; i++) {
         const start = barPositions[i];
-        const end = i + 1 < barPositions.length ? barPositions[i + 1] : totalLen;
+        const end =
+          i + 1 < barPositions.length ? barPositions[i + 1] : totalLen;
         bars.push({ start, end });
       }
 
@@ -670,8 +677,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const MAX_CANVAS_WIDTH = 10000;
 
     if (!blocks || !blocks.length) {
-        console.warn("renderVisualTab: no blocks to render");
-        return;
+      console.warn("renderVisualTab: no blocks to render");
+      return;
     }
 
     // Calculamos el número máximo de columnas (caracteres) entre todas las líneas
@@ -679,12 +686,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     let totalSteps = 0;
     blocks.forEach((block) => {
-        (block.strings || []).forEach((line) => {
-            totalSteps = Math.max(totalSteps, getMaxLineLength(line));
-        });
-        totalSteps = Math.max(totalSteps, getMaxLineLength(block.chords));
-        totalSteps = Math.max(totalSteps, getMaxLineLength(block.measureNums));
-        totalSteps = Math.max(totalSteps, getMaxLineLength(block.rhythmStems));
+      (block.strings || []).forEach((line) => {
+        totalSteps = Math.max(totalSteps, getMaxLineLength(line));
+      });
+      totalSteps = Math.max(totalSteps, getMaxLineLength(block.chords));
+      totalSteps = Math.max(totalSteps, getMaxLineLength(block.measureNums));
+      totalSteps = Math.max(totalSteps, getMaxLineLength(block.rhythmStems));
     });
 
     // Ajustamos el ancho de columna en función del total de steps
@@ -692,16 +699,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     let naturalWidth = LEFT_MARGIN + totalSteps * BASE_FRET_WIDTH + 100;
 
     if (naturalWidth > MAX_CANVAS_WIDTH) {
-        fretWidth = (MAX_CANVAS_WIDTH - LEFT_MARGIN - 100) / totalSteps;
-        naturalWidth = LEFT_MARGIN + totalSteps * fretWidth + 100;
-        console.log(
-            "Canvas demasiado ancho, comprimiendo:",
-            { totalSteps, BASE_FRET_WIDTH, fretWidth, naturalWidth }
-        );
+      fretWidth = (MAX_CANVAS_WIDTH - LEFT_MARGIN - 100) / totalSteps;
+      naturalWidth = LEFT_MARGIN + totalSteps * fretWidth + 100;
+      console.log("Canvas demasiado ancho, comprimiendo:", {
+        totalSteps,
+        BASE_FRET_WIDTH,
+        fretWidth,
+        naturalWidth,
+      });
     }
 
     const width = naturalWidth;
-    const height = TOP_MARGIN + (6 * STRING_SPACING) + 100;
+    const height = TOP_MARGIN + 6 * STRING_SPACING + 100;
 
     canvas.width = width;
     canvas.height = height;
@@ -1143,17 +1152,25 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (!info) return;
 
           if (entry.isIntersecting && !info.rendered) {
+            // El chunk entra en la vista -> LO CARGAMOS
             canvas = info.canvas;
             ctx = info.canvas.getContext("2d");
             // console.log("Rendering chunk", idx, "into canvas", info.canvas);
             renderChunk(info.blocks);
             info.rendered = true;
+          } else if (!entry.isIntersecting && info.rendered) {
+            // El chunk sale de la vista -> LO DESCARGAMOS
+            const cctx = info.canvas.getContext("2d");
+            // console.log("Clearing chunk", idx);
+            cctx.clearRect(0, 0, info.canvas.width, info.canvas.height);
+            info.rendered = false;
           }
         });
       },
       {
-        root: canvasWrapper, // el scroll es el wrapper
-        threshold: 0.1, // se dispara cuando al menos el 10% del canvas se ve
+        root: canvasWrapper, // el scroll horizontal es del wrapper
+        threshold: 0.1, // con que se vea un 10% nos vale
+        // opcional: rootMargin: "0px 200px" para precargar un poco antes
       }
     );
 
