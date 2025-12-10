@@ -179,6 +179,34 @@ canvas {
   gap: 15px;
 }
 
+.transport-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.transport-btn {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.transport-btn .material-icons {
+  font-size: 20px;
+}
+
+.transport-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .legend-item {
   display: flex;
   align-items: center;

@@ -148,6 +148,21 @@ function applyTranslations() {
       console.warn("Missing translation for placeholder key:", key);
     }
   });
+
+  // Update common attributes such as title or aria-label
+  const attrConfigs = [
+    { attr: "title", keyAttr: "data-i18n-title" },
+    { attr: "aria-label", keyAttr: "data-i18n-aria-label" },
+  ];
+  attrConfigs.forEach(({ attr, keyAttr }) => {
+    const attrElements = document.querySelectorAll(`[${keyAttr}]`);
+    attrElements.forEach((el) => {
+      const key = el.getAttribute(keyAttr);
+      if (window.translations[key]) {
+        el.setAttribute(attr, window.translations[key]);
+      }
+    });
+  });
 }
 
 window.t = function (key) {

@@ -33,7 +33,7 @@
         <option value="guitar-dist2" data-i18n="sound_dist2">Distortion 2</option>
       </select>
       <div id="tabVariantContainer" class="variant-selector" style="display: none;">
-        <label for="tabVariantSelect">Arrangement:</label>
+        <label for="tabVariantSelect" data-i18n="label_arrangement">Arrangement:</label>
         <select id="tabVariantSelect"></select>
       </div>
     </div>
@@ -70,6 +70,10 @@
           <span class="material-icons" aria-hidden="true">play_arrow</span>
           <span class="play-label" data-i18n="play_tab">Play</span>
         </button>
+        <button id="stop-tab-btn" class="secondary-btn" type="button" title="Stop">
+          <span class="material-icons" aria-hidden="true">stop</span>
+          <span data-i18n="stop_tab">Stop</span>
+        </button>
       </div>
       
       <div class="canvas-wrapper">
@@ -77,7 +81,48 @@
       </div>
       
       <div class="controls-bar">
-        <!-- Future controls like play/pause could go here -->
+        <div class="transport-controls">
+          <button
+            id="jump-start-btn"
+            class="transport-btn"
+            title="Go to Start"
+            aria-label="Go to Start"
+            data-i18n-title="transport_jump_start"
+            data-i18n-aria-label="transport_jump_start"
+          >
+            <span class="material-icons">first_page</span>
+          </button>
+          <button
+            id="prev-measure-btn"
+            class="transport-btn"
+            title="Previous Measure"
+            aria-label="Previous Measure"
+            data-i18n-title="transport_prev_measure"
+            data-i18n-aria-label="transport_prev_measure"
+          >
+            <span class="material-icons">skip_previous</span>
+          </button>
+          <button
+            id="next-measure-btn"
+            class="transport-btn"
+            title="Next Measure"
+            aria-label="Next Measure"
+            data-i18n-title="transport_next_measure"
+            data-i18n-aria-label="transport_next_measure"
+          >
+            <span class="material-icons">skip_next</span>
+          </button>
+          <button
+            id="jump-end-btn"
+            class="transport-btn"
+            title="Go to End"
+            aria-label="Go to End"
+            data-i18n-title="transport_jump_end"
+            data-i18n-aria-label="transport_jump_end"
+          >
+            <span class="material-icons">last_page</span>
+          </button>
+        </div>
         <div class="legend">
           <span class="legend-item"><span class="legend-color note"></span> <span data-i18n="legend_note">Note</span></span>
           <span class="legend-item"><span class="legend-color chord"></span> <span data-i18n="legend_chord">Chord</span></span>

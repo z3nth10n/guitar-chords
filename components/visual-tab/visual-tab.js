@@ -219,6 +219,43 @@ async function renderVisualTab() {
   const playButton = document.getElementById("play-tab-btn");
   const songTitleEl = document.getElementById("current-song-title");
   const songMetaEl = document.getElementById("current-artist-name");
+  const stopButton = document.getElementById("stop-tab-btn");
+  const jumpStartBtn = document.getElementById("jump-start-btn");
+  const jumpEndBtn = document.getElementById("jump-end-btn");
+  const nextMeasureBtn = document.getElementById("next-measure-btn");
+  const prevMeasureBtn = document.getElementById("prev-measure-btn");
+
+  if (stopButton) {
+    stopButton.addEventListener("click", () => {
+      stopPlayback();
+    });
+  }
+
+  if (jumpStartBtn) {
+    jumpStartBtn.addEventListener("click", () => {
+      seekToTime(0, { resume: isPlaying });
+    });
+  }
+
+  if (jumpEndBtn) {
+    jumpEndBtn.addEventListener("click", () => {
+      if (currentTimeline) {
+        seekToTime(currentTimeline.duration, { resume: false });
+      }
+    });
+  }
+
+  if (nextMeasureBtn) {
+    nextMeasureBtn.addEventListener("click", () => {
+      seekByMeasure(1);
+    });
+  }
+
+  if (prevMeasureBtn) {
+    prevMeasureBtn.addEventListener("click", () => {
+      seekByMeasure(-1);
+    });
+  }
 
   // Base canvas plus wrapper for multi-chunk rendering
   const canvasWrapper = document.querySelector(".canvas-wrapper");
@@ -239,6 +276,10 @@ async function renderVisualTab() {
   let playheadAnimationId = null;
   let playheadTimelineDuration = 0;
   let activePlayheadChunk = -1;
+  let currentTimeline = null;
+  let currentMeasureTimes = [];
+  let currentMeasureIndex = 0;
+  let playbackStartTime = 0;
   let currentTabSections = [];
   let currentSectionIndex = 0;
   let currentVariantLabel = "";
@@ -250,6 +291,10 @@ async function renderVisualTab() {
   tooltipEl.className = "chord-tooltip";
   document.body.appendChild(tooltipEl);
 
+  if (canvasWrapper) {
+    canvasWrapper.addEventListener("click", handleCanvasClick);
+  }
+
   const accordionContainer = document.getElementById("accordion-container");
   const searchInput = document.getElementById("songsterr-search");
   const searchResults = document.getElementById("search-results");
@@ -258,7 +303,7 @@ async function renderVisualTab() {
     playButton.disabled = true;
     playButton.addEventListener("click", () => {
       if (isPlaying) {
-        stopPlayback();
+        pausePlayback();
       } else {
         startPlayback();
       }
@@ -296,18 +341,23 @@ async function renderVisualTab() {
       tabAudioEngine.stopAll();
     }
     stopPlayheadAnimation();
-    playheadPositions = [];
-    playheadPositionIndex = 0;
-    if (isPlaying) {
-      isPlaying = false;
-      updatePlayButton();
-    } else {
-      updatePlayButton();
-    }
+  }
+
+  function pausePlayback(targetPosition = null) {
+    const newTime =
+      targetPosition !== null && !isNaN(targetPosition)
+        ? clampTime(targetPosition)
+        : getCurrentTimelineTime();
+    resetPlaybackState();
+    playbackStartTime = newTime;
+    updateMeasureIndexForTime(playbackStartTime);
+    isPlaying = false;
+    updatePlayButton();
+    positionPlayheadAtCurrentTime();
   }
 
   function stopPlayback() {
-    resetPlaybackState();
+    pausePlayback(0);
   }
 
   function ensureAllChunksRendered() {
@@ -357,6 +407,32 @@ async function renderVisualTab() {
         info.playheadLine.style.display = "none";
       }
     });
+  }
+
+  function rebuildCurrentTimeline() {
+    if (!playbackBlocks || !playbackBlocks.length) {
+      currentTimeline = null;
+      playheadPositions = [];
+      currentMeasureTimes = [];
+      playheadTimelineDuration = 0;
+       playbackStartTime = 0;
+       currentMeasureIndex = 0;
+      return;
+    }
+    const bpmValue =
+      currentTab && currentTab.bpm ? parseFloat(currentTab.bpm) : null;
+    currentTimeline = buildPlaybackTimeline(
+      playbackBlocks,
+      bpmValue,
+      currentTab ? currentTab.timeSig : null
+    );
+    playheadPositions = currentTimeline.positions || [];
+    currentMeasureTimes = currentTimeline.measures || [];
+    playheadTimelineDuration = currentTimeline.duration || 0;
+    playheadPositionIndex = 0;
+    playbackStartTime = clampTime(playbackStartTime);
+    updateMeasureIndexForTime(playbackStartTime);
+    positionPlayheadAtCurrentTime();
   }
 
   function startPlayheadAnimationLoop() {
@@ -491,29 +567,157 @@ async function renderVisualTab() {
     return currX + (nextX - currX) * ratio;
   }
 
+  function getTimeForVisualX(x) {
+    if (!playheadPositions.length) return null;
+    const clamped = Math.max(0, Math.min(x, totalCanvasWidth));
+    for (let i = 0; i < playheadPositions.length - 1; i++) {
+      const current = playheadPositions[i];
+      const next = playheadPositions[i + 1];
+      if (!current || !next) continue;
+      const startX = current.absoluteX ?? 0;
+      const endX = next.absoluteX ?? startX;
+      if (clamped >= startX && clamped <= endX) {
+        const span = endX - startX || 1;
+        const ratio = (clamped - startX) / span;
+        const startT = current.time;
+        const endT = next.time;
+        return startT + (endT - startT) * ratio;
+      }
+    }
+    const last = playheadPositions[playheadPositions.length - 1];
+    return last ? last.time : 0;
+  }
+
+  function clampTime(time) {
+    if (!currentTimeline) return 0;
+    const duration = currentTimeline.duration || 0;
+    if (typeof time !== "number" || !isFinite(time)) return 0;
+    return Math.max(0, Math.min(time, duration));
+  }
+
+  function getCurrentTimelineTime() {
+    if (!currentTimeline) return 0;
+    if (isPlaying && tabAudioEngine) {
+      const engineTime =
+        (tabAudioEngine.getCurrentTime
+          ? tabAudioEngine.getCurrentTime()
+          : performance.now() / 1000) || 0;
+      return clampTime(engineTime - playheadAnchorTime);
+    }
+    return clampTime(playbackStartTime);
+  }
+
+  function positionPlayheadAtCurrentTime() {
+    if (!currentTimeline || !playheadPositions.length) {
+      hideAllChunkPlayheads();
+      return;
+    }
+    const x = getVisualXForTime(playbackStartTime);
+    if (x !== null) {
+      positionPlayhead(x);
+    }
+  }
+
+  function updateMeasureIndexForTime(time) {
+    if (!currentMeasureTimes || !currentMeasureTimes.length) {
+      currentMeasureIndex = 0;
+      return;
+    }
+    let idx = 0;
+    for (let i = 0; i < currentMeasureTimes.length; i++) {
+      if (time >= currentMeasureTimes[i]) {
+        idx = i;
+      } else {
+        break;
+      }
+    }
+    currentMeasureIndex = idx;
+  }
+
+  function seekToTime(targetTime, options = {}) {
+    if (!currentTimeline) return;
+    const clamped = clampTime(targetTime);
+    const wasPlaying = isPlaying;
+    const resume =
+      options.resume !== undefined ? options.resume : wasPlaying;
+    if (wasPlaying) {
+      pausePlayback(clamped);
+    } else {
+      playbackStartTime = clamped;
+      updateMeasureIndexForTime(playbackStartTime);
+      positionPlayheadAtCurrentTime();
+    }
+    if (resume) {
+      startPlayback();
+    }
+  }
+
+  function seekByMeasure(delta) {
+    if (!currentTimeline || !currentMeasureTimes.length) return;
+    const targetIdx = Math.max(
+      0,
+      Math.min(currentMeasureIndex + delta, currentMeasureTimes.length - 1)
+    );
+    const targetTime = currentMeasureTimes[targetIdx];
+    seekToTime(targetTime, { resume: isPlaying });
+  }
+
+  function handleCanvasClick(e) {
+    if (isPlaying || !currentTimeline || !canvasWrapper) return;
+    const rect = canvasWrapper.getBoundingClientRect();
+    const relativeX = e.clientX - rect.left;
+    if (relativeX < 0 || relativeX > rect.width) return;
+    const absoluteX = canvasWrapper.scrollLeft + relativeX;
+    const targetTime = getTimeForVisualX(absoluteX);
+    if (targetTime !== null) {
+      seekToTime(targetTime, { resume: false });
+    }
+  }
+
+  function trimEventsForStart(events, startTime) {
+    if (!Array.isArray(events)) return [];
+    const trimmed = [];
+    const epsilon = 0.0005;
+    events.forEach((event) => {
+      if (!event) return;
+      const eventEnd = event.start + (event.duration || 0);
+      if (eventEnd <= startTime + epsilon) return;
+      const overlapOffset =
+        event.start < startTime ? startTime - event.start : 0;
+      trimmed.push({
+        start: Math.max(0, event.start - startTime),
+        duration: Math.max(0.05, (event.duration || 0) - overlapOffset),
+        midis: event.midis ? [...event.midis] : [],
+      });
+    });
+    return trimmed;
+  }
+
   async function startPlayback() {
     const engine = ensureAudioEngine();
-    if (!engine || !playbackBlocks || !playbackBlocks.length) return;
-    ensureAllChunksRendered();
-    const bpmValue =
-      currentTab && currentTab.bpm ? parseFloat(currentTab.bpm) : null;
-    const timeline = buildPlaybackTimeline(
-      playbackBlocks,
-      bpmValue,
-      currentTab ? currentTab.timeSig : null
-    );
-    if (!timeline.events.length) {
+    if (!engine) return;
+    if (!currentTimeline || !currentTimeline.events.length) {
+      rebuildCurrentTimeline();
+    }
+    if (!currentTimeline || !currentTimeline.events.length) {
       console.warn("No playable events detected in this tab");
       return;
     }
+    ensureAllChunksRendered();
+    const trimmedEvents = trimEventsForStart(
+      currentTimeline.events,
+      playbackStartTime
+    );
+    if (!trimmedEvents.length) {
+      console.warn("No events remaining after trim");
+      pausePlayback(0);
+      return;
+    }
 
-    stopPlayback();
+    resetPlaybackState();
 
     try {
-      playheadPositions = timeline.positions;
-      playheadTimelineDuration = timeline.duration;
-      playheadPositionIndex = 0;
-      const controller = await engine.playSequence(timeline.events, {
+      const controller = await engine.playSequence(trimmedEvents, {
         offset: PLAYBACK_OFFSET,
       });
       if (!controller) {
@@ -523,16 +727,19 @@ async function renderVisualTab() {
       playbackController = controller;
       isPlaying = true;
       updatePlayButton();
-      playheadAnchorTime =
-        (engine.getCurrentTime ? engine.getCurrentTime() : 0) +
-        PLAYBACK_OFFSET;
+      const baseTime = engine.getCurrentTime
+        ? engine.getCurrentTime()
+        : performance.now() / 1000;
+      playheadAnchorTime = baseTime + PLAYBACK_OFFSET - playbackStartTime;
       startPlayheadAnimationLoop();
+      const remaining = Math.max(
+        0,
+        (currentTimeline.duration - playbackStartTime) * 1000
+      );
       playbackTimeout = setTimeout(() => {
         playbackTimeout = null;
-        isPlaying = false;
-        playbackController = null;
-        updatePlayButton();
-      }, timeline.duration * 1000 + 250);
+        pausePlayback(currentTimeline ? currentTimeline.duration : 0);
+      }, remaining + 250);
     } catch (err) {
       console.error("Unable to play tab", err);
     }
@@ -570,7 +777,11 @@ async function renderVisualTab() {
       currentTabSections.length > 1 ? label : "";
     currentBlocks = section.blocks;
     currentTab.stringTunings = section.stringTunings || null;
+    playbackStartTime = 0;
+    currentMeasureIndex = 0;
     renderVisualTab(section.blocks);
+    rebuildCurrentTimeline();
+    positionPlayheadAtCurrentTime();
     updateVariantSelectorOptions();
     updateSongMeta();
   }
@@ -1390,7 +1601,7 @@ async function renderVisualTab() {
 
   function buildPlaybackTimeline(sequence, bpmValue, timeSigText) {
     if (!Array.isArray(sequence) || !sequence.length) {
-      return { events: [], duration: 0, positions: [] };
+      return { events: [], duration: 0, positions: [], measures: [] };
     }
 
     const parsedBpm =
@@ -1405,6 +1616,7 @@ async function renderVisualTab() {
 
     const events = [];
     const positions = [];
+    const measureStartTimes = [];
     let cursor = 0;
 
     sequence.forEach((entry) => {
@@ -1414,6 +1626,7 @@ async function renderVisualTab() {
       const measures = getMeasureRanges(block);
 
       measures.forEach((range) => {
+        measureStartTimes.push(cursor);
         const columnIndices = [];
         for (let i = range.start; i < range.end; i++) {
           if (block.strings[0][i] === "|") continue;
@@ -1470,7 +1683,7 @@ async function renderVisualTab() {
       });
     });
 
-    return { events, duration: cursor, positions };
+    return { events, duration: cursor, positions, measures: measureStartTimes };
   }
 
   function getMeasureRanges(block) {
@@ -2556,6 +2769,8 @@ async function renderVisualTab() {
     canvasWrapper.addEventListener("mouseleave", () => {
       tooltipEl.style.display = "none";
     });
+
+    rebuildCurrentTimeline();
   }
 
   // Polyfill for roundRect if needed (Chrome supports it, but just in case)
