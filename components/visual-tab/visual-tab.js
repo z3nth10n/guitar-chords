@@ -17,7 +17,7 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 
 function drawErrorOnCanvas(msg) {
-  // Canvas base + wrapper para multi-chunk
+  // Base canvas plus wrapper for multi-chunk rendering
   const canvasWrapper = document.querySelector(".canvas-wrapper");
   const baseCanvas = document.getElementById("tab-canvas");
 
@@ -29,8 +29,8 @@ function drawErrorOnCanvas(msg) {
   errorCanvas.height = 200;
   canvasWrapper.appendChild(errorCanvas);
 
-  // Reasignamos globales para que funcionen otras cosas si fuera necesario
-  // aunque aquí solo pintamos el error
+  // Reassign globals so other pieces continue working if needed
+  // although we only draw the error here
   const ctx = errorCanvas.getContext("2d");
 
   ctx.fillStyle = "#200";
@@ -148,16 +148,16 @@ async function renderVisualTab() {
   const playerContainer = document.getElementById("player-container");
   const backButton = document.getElementById("back-to-selection");
 
-  // Canvas base + wrapper para multi-chunk
+  // Base canvas plus wrapper for multi-chunk rendering
   const canvasWrapper = document.querySelector(".canvas-wrapper");
   const baseCanvas = document.getElementById("tab-canvas");
 
-  // Estas dos se irán reasignando al canvas del chunk que toque
+  // These two references are reassigned to whichever chunk canvas is active
   let canvas = baseCanvas;
   let ctx = canvas.getContext("2d");
 
-  // Para poder saber qué chunks tenemos
-  let currentChunks = []; // array de { canvas, blocks }
+  // Track which chunks are currently available
+  let currentChunks = []; // array of { canvas, blocks }
   let chunkObserver = null;
 
   // Tooltip element
@@ -239,7 +239,7 @@ async function renderVisualTab() {
       };
       cache.push(entry);
     } else {
-      // actualizamos por si han cambiado slug / título
+      // Update in case the slug or title changed
       entry.url = url;
       entry.artist = songMeta.artist;
       entry.title = songMeta.title;
@@ -251,7 +251,7 @@ async function renderVisualTab() {
   function hydrateRemoteTabsIntoTabsData() {
     const cache = loadRemoteTabsCache();
     const remoteTabs = cache.map((entry) => ({
-      id: `remote:${entry.id}`, // esto se usará en ?tab=
+      id: `remote:${entry.id}`, // used in ?tab=
       file: null,
       song: entry.title,
       artist: entry.artist,
@@ -284,7 +284,7 @@ async function renderVisualTab() {
   }
 
   async function performSongsterrSearch(query) {
-    // ATENCIÓN: ahora llamamos a nuestra propia API, no directamente a Songsterr
+    // NOTE: we now call our own API instead of hitting Songsterr directly
     const url = `${TABS_API_BASE}/songsterr-search?size=10&pattern=${encodeURIComponent(
       query
     )}`;
@@ -341,7 +341,7 @@ async function renderVisualTab() {
   }
 
   async function handleSongsterrSelection(songMeta) {
-    // Guardar/actualizar entrada en la caché local
+    // Save or update the entry in the local cache
     const entry = ensureRemoteTabEntry({
       songId: songMeta.songId,
       artist: songMeta.artist,
@@ -371,7 +371,7 @@ async function renderVisualTab() {
         content: null,
       };
       tabsData.push(tab);
-      renderAccordion(tabsData); // que aparezca en el acordeón
+      renderAccordion(tabsData); // ensure it appears in the accordion
     }
 
     await playTab(tab); // cargarla y reproducirla
@@ -406,12 +406,12 @@ async function renderVisualTab() {
 
       tabsData = loadedTabs.filter((t) => t !== null);
 
-      // Añadir tabs remotas desde localStorage a tabsData
+      // Add remote tabs stored in localStorage into tabsData
       hydrateRemoteTabsIntoTabsData();
 
       renderAccordion(tabsData);
 
-      // Comprobar query param ?tab=
+      // Check ?tab= query param
       const urlParams = new URLSearchParams(window.location.search);
       const tabParam = urlParams.get("tab");
       if (tabParam) {
@@ -439,7 +439,7 @@ async function renderVisualTab() {
 
     lines.forEach((line) => {
       const lower = line.toLowerCase();
-      if (lower.startsWith("canción:") || lower.startsWith("song:")) {
+      if (lower.startsWith("song:")) {
         song = line.split(":")[1].trim();
       }
       if (lower.startsWith("artista:") || lower.startsWith("artist:")) {
@@ -453,7 +453,7 @@ async function renderVisualTab() {
       }
     });
 
-    // Si hay metadatos recientes en localStorage (selección de Songsterr), priorizarlos
+    // If there are recent metadata entries in localStorage (Songsterr selection), prioritize them
     try {
       const storedArtist = localStorage.getItem("portal_lastRemoteArtist");
       const storedTitle = localStorage.getItem("portal_lastRemoteTitle");
@@ -470,7 +470,7 @@ async function renderVisualTab() {
   }
 
   function renderAccordion(tabs) {
-    // Agrupar por artista
+    // Group by artist
     const byArtist = {};
     tabs.forEach((tab) => {
       const artistName = tab.artist || "Unknown Artist";
@@ -525,7 +525,7 @@ async function renderVisualTab() {
     selectionContainer.style.display = "none";
     playerContainer.style.display = "flex";
 
-    // Si es remota y aún no tenemos contenido, lo pedimos a la API
+    // If the tab is remote and we do not have the content yet, fetch it from the API
     if (tab.isRemote && !tab.content) {
       try {
         const apiUrl = `${TABS_API_BASE}/tab?url=${encodeURIComponent(
@@ -538,7 +538,7 @@ async function renderVisualTab() {
         const data = await res.json();
         tab.content = data.tab;
 
-        // Leer solo bpm/compás; no sobrescribir título/artista con datos de la tab
+        // Read only bpm/time signature; do not overwrite title/artist with tab data
         const meta = parseMetadata(tab.content);
         tab.bpm = meta.bpm;
         tab.timeSig = meta.timeSig;
@@ -654,8 +654,8 @@ async function renderVisualTab() {
     return blocks;
   }
 
-  // Nº de compases por canvas
-  const BARS_PER_CHUNK = 4; // o 2, 4, 8... a tu gusto
+  // Number of measures per canvas
+  const BARS_PER_CHUNK = 4; // tweak to 2, 4, 8... to taste
   const CHORD_TOKEN_REGEX = /\*|([A-Za-z][^\s]*?)(?=\s*(?:[A-Z]|\*|$))/g;
 
   function createChunks(blocks) {
@@ -668,7 +668,7 @@ async function renderVisualTab() {
       const refLine = block.measureNums || block.strings[0];
       const totalLen = refLine.length;
 
-      // 1) Encontrar todas las posiciones de '|'
+      // 1) Find every '|' position
       const barPositions = [];
       for (let i = 0; i < refLine.length; i++) {
         if (refLine[i] === "|") {
@@ -676,14 +676,14 @@ async function renderVisualTab() {
         }
       }
 
-      // Si no hay barras de compás, hacemos un único chunk con el bloque entero
+      // If there are no barlines we create a single chunk for the whole block
       if (barPositions.length === 0) {
         chunks.push([block]);
         return;
       }
 
-      // 2) Construir rangos de compás [start, end)
-      //    Cada compás va de un '|' al siguiente '|' (o al final de la línea)
+      // 2) Build measure ranges [start, end)
+      //    Each measure runs from one '|' to the next or to end-of-line
       const bars = [];
       for (let i = 0; i < barPositions.length; i++) {
         const start = barPositions[i];
@@ -692,7 +692,7 @@ async function renderVisualTab() {
         bars.push({ start, end });
       }
 
-      // 3) Agrupar compases en chunks de BARS_PER_CHUNK
+      // 3) Group measures into chunks of BARS_PER_CHUNK
       for (let i = 0; i < bars.length; i += BARS_PER_CHUNK) {
         const group = bars.slice(i, i + BARS_PER_CHUNK);
         const start = group[0].start;
@@ -742,7 +742,7 @@ async function renderVisualTab() {
           rhythmBeams: sliceLine(block.rhythmBeams),
         };
 
-        // Cada chunk es un array de blocks, para reutilizar renderChunk()
+        // Each chunk is an array of blocks so we can reuse renderChunk()
         chunks.push([chunkBlock]);
       }
     });
@@ -771,13 +771,13 @@ async function renderVisualTab() {
     };
   }
 
-  // Mapa de figuras rítmicas según los códigos de rhythmStems
-  // Ajusta aquí si en json2tab usas otros caracteres.
+  // Map of rhythmic figures keyed by rhythmStems codes
+  // Adjust here if json2tab ever emits different characters.
   const RHYTHM_GLYPHS = {
-    // w: redonda (por si algún día la usas)
+    // w: whole note (if it ever appears)
     w: { type: "note", filled: false, stem: false, flags: 0 },
 
-    // h/b: blanca (dos opciones por si usas 'h' o 'b')
+    // h/b: half note (accept both 'h' and 'b')
     h: { type: "note", filled: false, stem: true, flags: 0 },
     b: { type: "note", filled: false, stem: true, flags: 0 },
 
@@ -790,10 +790,10 @@ async function renderVisualTab() {
     // s: semicorchea
     s: { type: "note", filled: true, stem: true, flags: 2 },
 
-    // t: fusa (por si acaso)
+    // t: thirty-second note (just in case)
     t: { type: "note", filled: true, stem: true, flags: 3 },
 
-    // r: silencio (usamos un símbolo genérico de silencio de negra)
+    // r: rest (we draw a generic quarter rest)
     r: { type: "rest" },
   };
 
@@ -803,7 +803,7 @@ async function renderVisualTab() {
     switch (code) {
       case "t": // fusa
         return 0.5;
-      case "f": // semifusa (no habitual, por si acaso)
+      case "f": // sixty-fourth note (rare, but covered)
         return 0.25;
       case "c": // corchea
         return 2;
@@ -815,7 +815,7 @@ async function renderVisualTab() {
       case "w": // redonda
         return 16;
       case "s": // semicorchea (base)
-      case "r": // silencio genérico
+      case "r": // generic rest
       default:
         return 1;
     }
@@ -843,17 +843,17 @@ async function renderVisualTab() {
     ctx.fillStyle = "#ddd";
     ctx.lineWidth = 2;
 
-    // Silencios: si es 'r' o si pasamos isRest=true
+    // Rests: either explicit 'r' or when isRest=true
     if (shape.type === "rest" || isRest) {
       const x0 = x;
       const restBase = baselineY;
-      // Ajuste vertical según el tipo de silencio
+      // Vertical offset based on rest type
       
       if (code === 'w') {
-          // Redonda: rectángulo bajo la línea
+          // Whole rest: rectangle below the line
           ctx.fillRect(x0 - 6, restBase - 10, 12, 6);
       } else if (code === 'h' || code === 'b') {
-          // Blanca: rectángulo sobre la línea
+          // Half rest: rectangle above the line
           ctx.fillRect(x0 - 6, restBase - 4, 12, 6);
       } else if (code === 'c') {
           // Corchea (tipo 7)
@@ -884,7 +884,7 @@ async function renderVisualTab() {
           ctx.lineTo(x0 - 1, y0 + 20);
           ctx.stroke();
       } else {
-          // Negra (o default para 'r'/'n')
+          // Quarter note (default for 'r'/'n')
           const y0 = restBase - 9;
           ctx.beginPath();
           ctx.moveTo(x0 - 4, y0);
@@ -901,12 +901,12 @@ async function renderVisualTab() {
       return;
     }
 
-    // Notas
+    // Notes
     const headWidth = Math.min(fretWidth * 0.5, 12);
     const headHeight = headWidth * 0.7;
     const headY = baselineY - 5;
 
-    // Cabeza de la nota (ovalada)
+    // Note head (oval)
     ctx.save();
     ctx.translate(x, headY);
     ctx.rotate(-Math.PI / 6);
@@ -962,7 +962,7 @@ async function renderVisualTab() {
     const isFirstChunk = chunkIndex === 0;
 
     const BASE_FRET_WIDTH = 40;
-    const COMPACT_FRET_WIDTH = 0; // Ancho reducido para compases vacíos
+    const COMPACT_FRET_WIDTH = 0; // Reduced width reserved for empty measures
     const STRING_SPACING = 40;
     const TOP_MARGIN = 100; // Increased for measure numbers
     const LEFT_MARGIN = isFirstChunk ? 60 : 20;
@@ -984,14 +984,14 @@ async function renderVisualTab() {
       const columnWidths = new Float32Array(len);
       const isColumnCompact = new Uint8Array(len);
 
-      // Detectar compases vacíos
+      // Detect empty measures
       let currentBarStart = 0;
 
       const checkRangeEmpty = (start, end) => {
         for (let c = start; c < end; c++) {
           for (let s = 0; s < block.strings.length; s++) {
             const char = block.strings[s][c];
-            // Si hay dígito o 'x' (nota muerta), no es vacío
+            // If there is a digit or 'x' (dead note) then it is not empty
             if (/\d/.test(char) || char.toLowerCase() === "x") return false;
           }
         }
@@ -1001,9 +1001,9 @@ async function renderVisualTab() {
       for (let i = 0; i <= len; i++) {
         const isBar = (i < len && block.strings[0][i] === "|") || i === len;
         if (isBar) {
-          // Revisar el rango anterior [currentBarStart, i)
+          // Review the previous range [currentBarStart, i)
           let start = currentBarStart;
-          // Si empieza con '|', saltarlo para el chequeo de contenido
+          // If it starts with '|' skip it when checking for content
           if (start < len && block.strings[0][start] === "|") start++;
 
           if (start < i) {
@@ -1039,18 +1039,18 @@ async function renderVisualTab() {
         }
 
         if (isBar) {
-          w = 0; // sin avance en barras de compás
+          w = 0; // no advance along the bar ruler
         } else if (isRestCol) {
-          w = BASE_FRET_WIDTH; // silencios: ancho base fijo
+          w = BASE_FRET_WIDTH; // rests use the fixed base width
         } else if (rhythmChar && rhythmChar !== "|") {
           if (rhythmChar.trim() === "") {
-            w = COMPACT_FRET_WIDTH; // sin figura: espaciado mínimo (0)
+            w = COMPACT_FRET_WIDTH; // no figure: minimum spacing (0)
           } else {
             w = BASE_FRET_WIDTH * getRhythmWidthMultiplier(rhythmChar);
           }
         } else {
-          // Si es compacta usamos ancho pequeño (0), si no el base
-          // (Las barras '|' quedan con ancho base para separar)
+          // Use the compact width when flagged, otherwise fall back to the base width
+          // (The '|' barlines keep the base width to create separators)
           w = isColumnCompact[i] ? COMPACT_FRET_WIDTH : BASE_FRET_WIDTH;
         }
 
@@ -1062,7 +1062,7 @@ async function renderVisualTab() {
       totalWidthAllBlocks += x;
     });
 
-    // Ajustamos escala si nos pasamos del ancho máximo
+    // Adjust scale when exceeding the maximum width
     let scale = 1;
     let naturalWidth = LEFT_MARGIN + totalWidthAllBlocks + 100;
 
@@ -1250,8 +1250,8 @@ async function renderVisualTab() {
           const w = getWidth(i);
           const x = startX + w / 2;
 
-          // Detectar silencio por 'z' en las cuerdas
-          // Un compás es silencio si NO hay notas y hay al menos una 'z' (o es 'r' explícito)
+          // Detect rests via 'z' on the strings
+          // A measure counts as a rest if it has no notes and contains at least one 'z' (or explicit 'r')
           let hasNote = false;
           let hasZ = false;
           if (block.strings) {
@@ -1446,7 +1446,7 @@ async function renderVisualTab() {
             const lightColor = lightenColor(baseColor, 0.3);
             const availableW = Math.max(6, w);
             const noteWidth = Math.max(14, availableW - 2);
-            const noteHeight = 32; // altura fija; solo la anchura sigue la figura temporal
+            const noteHeight = 32; // fixed height; only width tracks the rhythm value
             const radius = noteHeight / 2;
 
             ctx.save();
@@ -1548,7 +1548,7 @@ async function renderVisualTab() {
     });
   }
 
-  // Renderiza la tablatura completa creando varios canvas (uno por chunk)
+  // Render the entire tab by creating one canvas per chunk
   function renderVisualTab(blocks) {
     // console.log("renderVisualTab (multi-chunk) blocks:", blocks);
 
@@ -1560,7 +1560,7 @@ async function renderVisualTab() {
     // Limpiar canvases anteriores del wrapper
     canvasWrapper.innerHTML = "";
 
-    // Crear los chunks
+    // Build the chunks
     const chunks = createChunks(blocks);
     if (!chunks.length) {
       console.warn("No chunks generated, nothing to render");
@@ -1573,10 +1573,10 @@ async function renderVisualTab() {
       let chunkCanvas;
 
       if (index === 0) {
-        // Reutilizamos el canvas base
+        // Reuse the base canvas
         chunkCanvas = baseCanvas;
       } else {
-        // Clonamos el base SIN hijos ni contenido
+        // Clone the base without children or content
         chunkCanvas = baseCanvas.cloneNode(false);
         // Evitamos IDs duplicados
         chunkCanvas.removeAttribute("id");
@@ -1592,12 +1592,12 @@ async function renderVisualTab() {
       });
     });
 
-    // Si ya había un observer anterior, lo desconectamos
+    // Disconnect any previously registered observer
     if (chunkObserver) {
       chunkObserver.disconnect();
     }
 
-    // Observer para ir pintando según se van viendo los canvases
+    // Observer that renders canvases lazily as they enter the viewport
     chunkObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -1606,7 +1606,7 @@ async function renderVisualTab() {
           if (!info) return;
 
           if (entry.isIntersecting && !info.rendered) {
-            // El chunk entra en la vista -> LO CARGAMOS
+            // Chunk enters the viewport -> LOAD IT
             canvas = info.canvas;
             ctx = info.canvas.getContext("2d");
             // console.log("Rendering chunk", idx, "into canvas", info.canvas);
@@ -1614,7 +1614,7 @@ async function renderVisualTab() {
             renderChunk(info.blocks, info.interactiveRegions, idx);
             info.rendered = true;
           } else if (!entry.isIntersecting && info.rendered) {
-            // El chunk sale de la vista -> LO DESCARGAMOS
+            // Chunk leaves the viewport -> UNLOAD IT
             const cctx = info.canvas.getContext("2d");
             // console.log("Clearing chunk", idx);
             cctx.clearRect(0, 0, info.canvas.width, info.canvas.height);
@@ -1623,13 +1623,13 @@ async function renderVisualTab() {
         });
       },
       {
-        root: canvasWrapper, // el scroll horizontal es del wrapper
-        // threshold: 0.1, // con que se vea un 10% nos vale
-        rootMargin: "0px 200px" // para precargar un poco antes
+        root: canvasWrapper, // horizontal scroll belongs to the wrapper
+        // threshold: 0.1, // 10% visibility is enough
+        rootMargin: "0px 200px" // preload slightly before entering view
       }
     );
 
-    // Registrar cada canvas en el observer
+    // Register each canvas in the observer
     currentChunks.forEach((info, idx) => {
       info.canvas.dataset.chunkIndex = idx;
       chunkObserver.observe(info.canvas);
@@ -1890,3 +1890,4 @@ if (!window.__COMPONENT_ROUTER_ACTIVE) {
 window.renderVisualTab = renderVisualTab;
 
 })();
+
