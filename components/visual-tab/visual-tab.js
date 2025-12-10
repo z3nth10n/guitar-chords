@@ -45,6 +45,20 @@ const CONSTS = window.GUITAR_CONSTS || {};
 async function renderVisualTab() {
   let currentNotation = "english";
 
+  const tabAudioEngine = window.PlayTab
+    ? window.PlayTab.createEngine({ soundProfile: "guitar-clean" })
+    : null;
+  if (tabAudioEngine) {
+    tabAudioEngine.preloadSamples().catch((err) =>
+      console.warn("Unable to preload tab samples", err)
+    );
+  }
+
+  let currentBlocks = null;
+  let isPlaying = false;
+  let playbackController = null;
+  let playbackTimeout = null;
+
   const SONGSTERR_BASE_URL = "https://www.songsterr.com";
   const TABS_API_BASE = getApiLocation();
   const REMOTE_TABS_KEY = "visualTab_remoteTabs";
@@ -79,6 +93,7 @@ async function renderVisualTab() {
       // Re-render if a tab is active
       if (currentTab && currentTab.content) {
         const parsedData = parseTabContent(currentTab.content);
+        currentBlocks = parsedData;
         renderVisualTab(parsedData);
       }
     });
@@ -120,7 +135,7 @@ async function renderVisualTab() {
       const newLang = e.target.value;
       localStorage.setItem("portal_selectedLang", newLang);
       if (window.loadTranslations) {
-        window.loadTranslations(newLang);
+        window.loadTranslations(newLang).then(() => updatePlayButton());
       }
 
       if (newLang === "es") {
@@ -141,12 +156,15 @@ async function renderVisualTab() {
 
   // Initial load
   if (window.loadTranslations) {
-    window.loadTranslations(userLang);
+    window.loadTranslations(userLang).then(() => updatePlayButton());
+  } else {
+    updatePlayButton();
   }
 
   const selectionContainer = document.getElementById("selection-container");
   const playerContainer = document.getElementById("player-container");
   const backButton = document.getElementById("back-to-selection");
+  const playButton = document.getElementById("play-tab-btn");
 
   // Base canvas plus wrapper for multi-chunk rendering
   const canvasWrapper = document.querySelector(".canvas-wrapper");
@@ -169,6 +187,93 @@ async function renderVisualTab() {
   const searchInput = document.getElementById("songsterr-search");
   const searchResults = document.getElementById("search-results");
 
+  if (playButton) {
+    playButton.disabled = true;
+    playButton.addEventListener("click", () => {
+      if (isPlaying) {
+        stopPlayback();
+      } else {
+        startPlayback();
+      }
+    });
+  }
+
+  function updatePlayButton() {
+    if (!playButton) return;
+    const icon = playButton.querySelector(".material-icons");
+    const label = playButton.querySelector(".play-label");
+    if (icon) {
+      icon.textContent = isPlaying ? "pause" : "play_arrow";
+    }
+    if (label) {
+      const key = isPlaying ? "pause_tab" : "play_tab";
+      const fallback = isPlaying ? "Pause" : "Play";
+      label.textContent = window.t ? window.t(key) : fallback;
+    }
+  }
+
+  function resetPlaybackState() {
+    if (playbackTimeout) {
+      clearTimeout(playbackTimeout);
+      playbackTimeout = null;
+    }
+    if (playbackController && playbackController.stop) {
+      try {
+        playbackController.stop();
+      } catch (err) {
+        console.warn("Error stopping playback", err);
+      }
+    }
+    playbackController = null;
+    if (tabAudioEngine) {
+      tabAudioEngine.stopAll();
+    }
+    if (isPlaying) {
+      isPlaying = false;
+      updatePlayButton();
+    } else {
+      updatePlayButton();
+    }
+  }
+
+  function stopPlayback() {
+    resetPlaybackState();
+  }
+
+  async function startPlayback() {
+    if (!tabAudioEngine || !currentBlocks || !currentBlocks.length) return;
+    const bpmValue =
+      currentTab && currentTab.bpm ? parseFloat(currentTab.bpm) : null;
+    const timeline = buildPlaybackTimeline(currentBlocks, bpmValue);
+    if (!timeline.events.length) {
+      console.warn("No playable events detected in this tab");
+      return;
+    }
+
+    stopPlayback();
+
+    try {
+      const controller = await tabAudioEngine.playSequence(timeline.events);
+      if (!controller) {
+        console.warn("Playback engine did not return a controller");
+        return;
+      }
+      playbackController = controller;
+      isPlaying = true;
+      updatePlayButton();
+      playbackTimeout = setTimeout(() => {
+        playbackTimeout = null;
+        isPlaying = false;
+        playbackController = null;
+        updatePlayButton();
+      }, timeline.duration * 1000 + 250);
+    } catch (err) {
+      console.error("Unable to play tab", err);
+    }
+  }
+
+  updatePlayButton();
+
   let currentTab = null;
   let tabsData = [];
 
@@ -176,6 +281,9 @@ async function renderVisualTab() {
   // await loadTabs(); // Moved to end to ensure constants are loaded
 
   backButton.addEventListener("click", () => {
+    stopPlayback();
+    currentBlocks = null;
+    if (playButton) playButton.disabled = true;
     playerContainer.style.display = "none";
     selectionContainer.style.display = "block";
 
@@ -521,6 +629,7 @@ async function renderVisualTab() {
   }
 
   async function playTab(tab) {
+    stopPlayback();
     currentTab = tab;
     selectionContainer.style.display = "none";
     playerContainer.style.display = "flex";
@@ -569,7 +678,11 @@ async function renderVisualTab() {
     }
 
     const parsedData = parseTabContent(tab.content);
-    // console.log("parsedData", parsedData);
+    currentBlocks = parsedData;
+    if (playButton) {
+      playButton.disabled = false;
+      updatePlayButton();
+    }
     renderVisualTab(parsedData);
   }
 
@@ -819,6 +932,79 @@ async function renderVisualTab() {
       default:
         return 1;
     }
+  }
+
+  function buildPlaybackTimeline(blocks, bpmValue) {
+    if (!Array.isArray(blocks) || !blocks.length) {
+      return { events: [], duration: 0 };
+    }
+    const parsedBpm =
+      typeof bpmValue === "number" && !isNaN(bpmValue)
+        ? bpmValue
+        : parseFloat(bpmValue);
+    const bpm = Math.max(40, parsedBpm || 0) || 90;
+    const sixteenth = 60 / bpm / 4;
+    const events = [];
+    let cursor = 0;
+
+    blocks.forEach((block) => {
+      if (!block.strings || !block.strings.length) return;
+      const guideLine = block.strings[0];
+      const length = guideLine.length;
+      const offset = /^[a-zA-Z]\|/.test(guideLine) ? 2 : 0;
+
+      for (let i = offset; i < length; i++) {
+        if (guideLine[i] === "|") continue;
+        const multiplier = getColumnDurationMultiplier(block, i);
+        if (multiplier === 0) continue;
+        const duration = Math.max(multiplier * sixteenth, sixteenth * 0.5);
+        const midis = collectColumnMidis(block, i);
+        if (midis.length) {
+          events.push({
+            start: cursor,
+            duration,
+            midis,
+          });
+        }
+        cursor += duration;
+      }
+    });
+
+    return { events, duration: cursor };
+  }
+
+  function getColumnDurationMultiplier(block, index) {
+    if (!block || !block.strings || !block.strings.length) return 0;
+    const guide = block.strings[0];
+    if (guide[index] === "|") return 0;
+
+    if (block.rhythmStems && block.rhythmStems[index]) {
+      const symbol = block.rhythmStems[index];
+      if (symbol === "|" || symbol.trim() === "") {
+        return 1;
+      }
+      return getRhythmWidthMultiplier(symbol);
+    }
+
+    return 1;
+  }
+
+  function collectColumnMidis(block, index) {
+    const notes = [];
+    if (!block || !block.strings) return notes;
+    const maxStrings = Math.min(
+      block.strings.length,
+      STANDARD_TUNING_MIDI.length
+    );
+    for (let s = 0; s < maxStrings; s++) {
+      const fretInfo = getFretAt(block.strings[s], index);
+      if (fretInfo) {
+        const fretValue = parseInt(fretInfo.value, 10);
+        if (isNaN(fretValue)) continue;
+        notes.push(STANDARD_TUNING_MIDI[s] + fretValue);
+      }
+    }
+    return notes;
   }
 
   function lightenColor(hex, factor = 0.25) {
@@ -1890,4 +2076,3 @@ if (!window.__COMPONENT_ROUTER_ACTIVE) {
 window.renderVisualTab = renderVisualTab;
 
 })();
-

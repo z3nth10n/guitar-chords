@@ -6,8 +6,6 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎸</text></svg>">
   <title data-i18n="tool_visual_tab_title">Visual Tab Player</title>
 
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <link rel="stylesheet" href="../../css/shared.css">
   <link rel="stylesheet" href="./visual-tab.css">
 </head>
 <body>
@@ -57,6 +55,10 @@
           <h2 id="current-song-title">Song Title</h2>
           <p id="current-artist-name">Artist Name</p>
         </div>
+        <button id="play-tab-btn" class="secondary-btn" type="button">
+          <span class="material-icons" aria-hidden="true">play_arrow</span>
+          <span class="play-label" data-i18n="play_tab">Play</span>
+        </button>
       </div>
       
       <div class="canvas-wrapper">
@@ -74,9 +76,6 @@
   </div>
 
   <!-- Scripts -->
-  <script src="../../js/consts.js"></script>
-  <script src="../../js/shared/theme.js"></script>
-  <script src="../../js/shared/langs.js"></script>
   <script src="./visual-tab.js"></script>
 </body>
 </html>

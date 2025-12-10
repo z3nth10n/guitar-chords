@@ -8,6 +8,8 @@ window.translations_es = {
   legend_chord: "Acorde",
   select_artist: "Seleccionar Artista",
   unknown_artist: "Artista Desconocido",
-  unknown_song: "Canción Desconocida",
+  unknown_song: "Canci▋ Desconocida",
   show_chords: "Mostrar Acordes",
+  play_tab: "Reproducir",
+  pause_tab: "Pausar",
 };

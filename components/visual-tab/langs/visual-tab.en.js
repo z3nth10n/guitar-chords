@@ -9,5 +9,6 @@ window.translations_en = {
   unknown_artist: "Unknown Artist",
   unknown_song: "Unknown Song",
   show_chords: "Show Chords",
+  play_tab: "Play",
+  pause_tab: "Pause",
 };
-

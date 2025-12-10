@@ -709,32 +709,20 @@ const deleteChordBtn = document.getElementById("deleteChordBtn");
 // Advanced Settings DOM
 // Elements are fetched in initAdvancedSettings to ensure availability
 
-// --- Audio Context ---
-let audioCtx;
-const audioBuffers = {}; // Map MIDI note -> AudioBuffer
-window.sampleBuffers = {}; // Initialize immediately to avoid undefined checks
-let currentLoadSession = 0; // To prevent race conditions when switching sounds
-
-const AVAILABLE_SAMPLES = {
-  36: "C2.mp3",
-  41: "F2.mp3",
-  45: "A2.mp3",
-  48: "C3.mp3",
-  52: "E3.mp3",
-  55: "G3.mp3",
-  59: "B3.mp3",
-  64: "E4.mp3",
-  67: "G4.mp3",
-  71: "B4.mp3",
-  74: "D5.mp3",
-  // 80: "G#5.mp3", // Missing on server
-  // 85: "C#6.mp3", // Missing on server
-};
+const tabAudioEngine = window.PlayTab
+  ? window.PlayTab.createEngine({
+      soundProfile: state.soundProfile,
+      advanced: state.advanced,
+    })
+  : null;
 
 // --- Initialization ---
 async function renderChordLibrary() {
-  // Preload samples
-  loadGuitarSamples();
+  if (tabAudioEngine) {
+    tabAudioEngine.preloadSamples().catch((err) =>
+      console.warn("Unable to preload guitar samples", err)
+    );
+  }
 
   // Set translation prefix
   if (window.setTranslationPrefix) {
@@ -831,7 +819,9 @@ async function renderChordLibrary() {
     soundSelect.addEventListener("change", async (e) => {
       state.soundProfile = e.target.value;
       localStorage.setItem("guitar_sound_profile", state.soundProfile);
-      await loadGuitarSamples();
+      if (tabAudioEngine) {
+        await tabAudioEngine.setSoundProfile(state.soundProfile);
+      }
     });
   }
 }
@@ -956,77 +946,8 @@ function init() {
   initAdvancedSettings();
 }
 
-async function loadGuitarSamples() {
-  currentLoadSession++;
-  const mySessionId = currentLoadSession;
-  console.log(
-    `Starting to load guitar samples (${state.soundProfile}) [Session ${mySessionId}]...`
-  );
-
-  // Clear existing buffers if reloading
-  window.sampleBuffers = {};
-  // Clear decoded buffers
-  for (const key in audioBuffers) delete audioBuffers[key];
-
-  const promises = Object.entries(AVAILABLE_SAMPLES).map(
-    async ([midi, filename]) => {
-      if (mySessionId !== currentLoadSession) return; // Abort if new session started
-
-      try {
-        const url = `sounds/${state.soundProfile}/${encodeURIComponent(
-          filename
-        )}`;
-        const response = await fetch(url);
-
-        if (mySessionId !== currentLoadSession) return; // Check again
-
-        if (response.ok) {
-          const arrayBuffer = await response.arrayBuffer();
-          if (mySessionId !== currentLoadSession) return; // Check again
-          window.sampleBuffers[midi] = arrayBuffer;
-        } else {
-          console.warn(
-            `Failed to fetch ${url}: ${response.status} ${response.statusText}`
-          );
-        }
-      } catch (e) {
-        console.warn(`Could not load sample ${filename}`, e);
-      }
-    }
-  );
-  await Promise.all(promises);
-
-  if (mySessionId === currentLoadSession) {
-    console.log(
-      `All samples loaded for session ${mySessionId}. Count:`,
-      Object.keys(window.sampleBuffers).length
-    );
-  }
-}
-
 async function playCurrentChord() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-
-  if (audioCtx.state === "suspended") {
-    await audioCtx.resume();
-  }
-
-  // Decode any pending buffers
-  if (window.sampleBuffers) {
-    for (const [midi, arrayBuffer] of Object.entries(window.sampleBuffers)) {
-      if (!audioBuffers[midi]) {
-        try {
-          // Clone buffer because decodeAudioData detaches it
-          const tempBuffer = arrayBuffer.slice(0);
-          audioBuffers[midi] = await audioCtx.decodeAudioData(tempBuffer);
-        } catch (e) {
-          console.error(`Error decoding sample for MIDI ${midi}`, e);
-        }
-      }
-    }
-  }
+  if (!tabAudioEngine) return;
 
   let currentChord;
   if (state.isCustomMode && state.customChord) {
@@ -1036,138 +957,21 @@ async function playCurrentChord() {
     currentChord = variations[state.voicingIndex];
   }
 
-  if (!currentChord) return;
+  if (!currentChord || !currentChord.frets) return;
 
-  // Use current tuning for playback
-  // state.currentTuning is [High E, B, G, D, A, E] (Strings 1 to 6)
-  // We need Strings 6 to 1 for the loop below?
-  // currentChord.frets is ordered String 6 to String 1.
-  // So we need [E, A, D, G, B, E].
-  const stringBaseMidi = [...state.currentTuning].reverse();
+  const tuningLowToHigh = [...state.currentTuning].reverse();
 
-  const now = audioCtx.currentTime;
-  const duration = 3.5; // seconds
-
-  // Strumming effect: slight delay between strings
-  let noteCount = 0;
-  currentChord.frets.forEach((fret, stringIndex) => {
-    if (fret !== -1) {
-      // Not muted
-      const midiNote = stringBaseMidi[stringIndex] + fret;
-      const delay = stringIndex * 0.05; // Downstroke strum
-
-      playBestSample(midiNote, now, duration, delay);
-      noteCount++;
-    }
-  });
-}
-
-function playBestSample(targetMidi, startTime, duration, delay) {
-  // Find closest available sample
-  let bestBaseMidi = -1;
-  let minDistance = Infinity;
-
-  const availableMidis = Object.keys(audioBuffers).map(Number);
-
-  if (availableMidis.length === 0) {
-    // Fallback to synth if no samples loaded
-    console.warn(
-      "No samples available in audioBuffers, falling back to synth."
-    );
-    const frequency = 440 * Math.pow(2, (targetMidi - 69) / 12);
-    playTone(frequency, startTime, duration, delay);
-    return;
+  try {
+    await tabAudioEngine.playChord({
+      frets: currentChord.frets,
+      tuning: tuningLowToHigh,
+      duration: 3.5,
+      strumDelay: 0.05,
+      direction: "down",
+    });
+  } catch (err) {
+    console.error("Error playing chord", err);
   }
-
-  availableMidis.forEach((baseMidi) => {
-    const dist = Math.abs(targetMidi - baseMidi);
-    if (dist < minDistance) {
-      minDistance = dist;
-      bestBaseMidi = baseMidi;
-    }
-  });
-
-  const buffer = audioBuffers[bestBaseMidi];
-  if (!buffer) return;
-
-  const source = audioCtx.createBufferSource();
-  source.buffer = buffer;
-
-  // Calculate playback rate
-  const semitones = targetMidi - bestBaseMidi;
-  const rate = Math.pow(2, semitones / 12);
-
-  source.playbackRate.value = rate;
-
-  // --- Advanced Pitch Shift ---
-  const totalDetune =
-    state.advanced.shiftOctaves * 1200 +
-    state.advanced.shiftSemitones * 100 +
-    state.advanced.shiftFull * 100 +
-    state.advanced.shiftCents;
-
-  source.detune.value = totalDetune;
-
-  // --- Advanced Formant Shift (Simulated) ---
-  const totalFormantShift =
-    state.advanced.formantFull * 100 +
-    state.advanced.formantSemitones * 100 +
-    state.advanced.formantCents;
-
-  let outputNode = source;
-
-  if (totalFormantShift !== 0) {
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = "peaking";
-    filter.Q.value = 1;
-    filter.gain.value = 6;
-
-    const baseFreq = 1000;
-    const ratio = Math.pow(2, totalFormantShift / 1200);
-    filter.frequency.value = baseFreq * ratio;
-
-    source.connect(filter);
-    outputNode = filter;
-  }
-
-  const gain = audioCtx.createGain();
-  gain.gain.value = 0.5; // Base volume
-
-  outputNode.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  const start = startTime + delay;
-  source.start(start);
-
-  // Fade out
-  gain.gain.setValueAtTime(0.5, start + duration - 0.5);
-  gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
-
-  source.stop(start + duration + 0.1);
-}
-
-function playTone(freq, startTime, duration, delay) {
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-
-  // Use a mix of triangle and sine for a slightly fuller sound,
-  // but for simplicity here we use triangle which has some harmonics.
-  osc.type = "triangle";
-  osc.frequency.value = freq;
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  const start = startTime + delay;
-
-  osc.start(start);
-
-  // Envelope to simulate plucked string
-  gain.gain.setValueAtTime(0, start);
-  gain.gain.linearRampToValueAtTime(0.2, start + 0.02); // Fast attack
-  gain.gain.exponentialRampToValueAtTime(0.001, start + duration); // Long decay
-
-  osc.stop(start + duration);
 }
 
 function getNoteName(midiOrPc, withOctave = false) {
@@ -1903,6 +1707,9 @@ function saveAdvancedSettings() {
     "guitar_advanced_settings",
     JSON.stringify(state.advanced)
   );
+  if (tabAudioEngine) {
+    tabAudioEngine.setAdvancedSettings(state.advanced);
+  }
 }
 
 // --- Custom Chords & Interaction ---
