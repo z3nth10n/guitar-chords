@@ -224,6 +224,14 @@ async function renderVisualTab() {
   const jumpEndBtn = document.getElementById("jump-end-btn");
   const nextMeasureBtn = document.getElementById("next-measure-btn");
   const prevMeasureBtn = document.getElementById("prev-measure-btn");
+  const remoteLoadingOverlay = document.getElementById(
+    "remote-loading-overlay"
+  );
+  const remoteLoadingMessageEl =
+    document.getElementById("remoteLoadingMessage");
+  const apiErrorModal = document.getElementById("api-error-modal");
+  const apiErrorMessageEl = document.getElementById("apiErrorMessage");
+  const apiErrorCloseBtn = document.getElementById("apiErrorCloseBtn");
 
   if (stopButton) {
     stopButton.addEventListener("click", () => {
@@ -322,6 +330,48 @@ async function renderVisualTab() {
       const fallback = isPlaying ? "Pause" : "Play";
       label.textContent = window.t ? window.t(key) : fallback;
     }
+  }
+
+  function hideApiError() {
+    if (!apiErrorModal) return;
+    apiErrorModal.classList.remove("is-visible");
+  }
+
+  if (apiErrorCloseBtn) {
+    apiErrorCloseBtn.addEventListener("click", hideApiError);
+  }
+
+  if (apiErrorModal) {
+    apiErrorModal.addEventListener("click", (e) => {
+      if (e.target === apiErrorModal) {
+        hideApiError();
+      }
+    });
+  }
+
+  function setRemoteLoading(isVisible, overrideMessage) {
+    if (!remoteLoadingOverlay) return;
+    if (isVisible && remoteLoadingMessageEl) {
+      remoteLoadingMessageEl.textContent =
+        overrideMessage ||
+        (window.t
+          ? window.t("loading_remote_tab")
+          : "Loading tab...");
+    }
+    remoteLoadingOverlay.classList.toggle("is-visible", Boolean(isVisible));
+  }
+
+  function showApiError(message) {
+    if (!apiErrorModal || !apiErrorMessageEl) {
+      alert(message);
+      return;
+    }
+    apiErrorMessageEl.textContent =
+      message ||
+      (window.t
+        ? window.t("api_error_generic")
+        : "Unable to download the tab. Please try again.");
+    apiErrorModal.classList.add("is-visible");
   }
 
   function resetPlaybackState() {
@@ -1164,15 +1214,42 @@ async function renderVisualTab() {
 
     // If the tab is remote and we do not have the content yet, fetch it from the API
     if (tab.isRemote && !tab.content) {
+      setRemoteLoading(true);
       try {
         const apiUrl = `${TABS_API_BASE}/tab?url=${encodeURIComponent(
           tab.remoteUrl
         )}`;
         const res = await fetch(apiUrl);
+        const rawBody = await res.text();
         if (!res.ok) {
-          throw new Error(`tabs API error: ${res.status}`);
+          let serverMessage = null;
+          try {
+            const errorPayload = JSON.parse(rawBody);
+            serverMessage = errorPayload.message || errorPayload.error || null;
+          } catch (_) {
+            serverMessage = rawBody;
+          }
+          throw new Error(
+            serverMessage || `tabs API error: ${res.status}`
+          );
         }
-        const data = await res.json();
+        let data = null;
+        try {
+          data = rawBody ? JSON.parse(rawBody) : null;
+        } catch (parseErr) {
+          throw new Error(
+            window.t
+              ? window.t("api_error_parse")
+              : "The server response could not be parsed."
+          );
+        }
+        if (!data || !data.tab) {
+          throw new Error(
+            window.t
+              ? window.t("api_error_empty_tab")
+              : "Server returned an empty tab."
+          );
+        }
         tab.content = data.tab;
 
         // Read only bpm/time signature; do not overwrite title/artist with tab data
@@ -1181,9 +1258,19 @@ async function renderVisualTab() {
         tab.timeSig = meta.timeSig;
       } catch (e) {
         console.error("Error fetching remote tab", e);
-        alert("Error downloading tab from server.");
+        showApiError(
+          e && e.message
+            ? e.message
+            : window.t
+            ? window.t("api_error_generic")
+            : "Unable to download the tab. Please try again."
+        );
         return;
+      } finally {
+        setRemoteLoading(false);
       }
+    } else {
+      setRemoteLoading(false);
     }
 
     // Actualizar URL (?tab=<id>)

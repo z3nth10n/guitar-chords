@@ -131,6 +131,23 @@
     </div>
   </div>
 
+  <div id="remote-loading-overlay" class="api-overlay" aria-live="polite">
+    <div class="api-overlay-content">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <p id="remoteLoadingMessage" data-i18n="loading_remote_tab">Loading tab...</p>
+    </div>
+  </div>
+
+  <div id="api-error-modal" class="api-error-modal" role="alertdialog" aria-modal="true" aria-labelledby="apiErrorMessage">
+    <div class="api-error-content">
+      <div class="api-error-body">
+        <span class="material-icons" aria-hidden="true">error_outline</span>
+        <p id="apiErrorMessage">An unexpected error occurred.</p>
+      </div>
+      <button id="apiErrorCloseBtn" class="secondary-btn" type="button" data-i18n="close_modal">Close</button>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="../../js/consts.js"></script>
   <script src="../../js/shared/theme.js"></script>

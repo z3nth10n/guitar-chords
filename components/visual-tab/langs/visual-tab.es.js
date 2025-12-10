@@ -23,4 +23,9 @@ window.translations_es = {
   transport_prev_measure: "Compas anterior",
   transport_next_measure: "Compas siguiente",
   transport_jump_end: "Ir al final",
+  loading_remote_tab: "Descargando tablatura...",
+  api_error_generic: "No pudimos descargar la tablatura. Inténtalo de nuevo en unos segundos.",
+  api_error_parse: "La respuesta del servidor no se pudo interpretar.",
+  api_error_empty_tab: "El servidor devolvió una tablatura vacía.",
+  close_modal: "Cerrar",
 };

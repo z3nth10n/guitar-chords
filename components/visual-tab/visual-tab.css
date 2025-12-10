@@ -230,6 +230,73 @@ canvas {
   background: #3b82f6; /* Blue like the image */
 }
 
+.api-overlay,
+.api-error-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 7, 10, 0.6);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 2000;
+}
+
+.api-overlay.is-visible,
+.api-error-modal.is-visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.api-overlay-content,
+.api-error-content {
+  background: var(--surface, #1c1f26);
+  border-radius: 12px;
+  padding: 24px 32px;
+  color: var(--text, #f3f4f6);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  min-width: 260px;
+  text-align: center;
+}
+
+.api-overlay .loading-spinner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--accent, #10b981);
+  margin: 0 auto 16px auto;
+  animation: api-spin 0.9s linear infinite;
+}
+
+.api-error-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.api-error-body .material-icons {
+  font-size: 36px;
+  color: #f87171;
+}
+
+.api-error-content button {
+  width: 100%;
+}
+
+@keyframes api-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .secondary-btn {
   background: transparent;
   border: 1px solid var(--border);

@@ -22,4 +22,9 @@ window.translations_en = {
   transport_prev_measure: "Previous Measure",
   transport_next_measure: "Next Measure",
   transport_jump_end: "Go to End",
+  loading_remote_tab: "Downloading tab...",
+  api_error_generic: "We couldn't download the tab. Please try again in a moment.",
+  api_error_parse: "The server response could not be parsed.",
+  api_error_empty_tab: "The server returned an empty tab.",
+  close_modal: "Close",
 };
