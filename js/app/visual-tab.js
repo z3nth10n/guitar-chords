@@ -787,17 +787,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Silencios: si es 'r' o si pasamos isRest=true
     if (shape.type === "rest" || isRest) {
       const x0 = x;
+      const restBase = baselineY;
       // Ajuste vertical según el tipo de silencio
       
       if (code === 'w') {
           // Redonda: rectángulo bajo la línea
-          ctx.fillRect(x0 - 6, baselineY - 10, 12, 6);
+          ctx.fillRect(x0 - 6, restBase - 10, 12, 6);
       } else if (code === 'h' || code === 'b') {
           // Blanca: rectángulo sobre la línea
-          ctx.fillRect(x0 - 6, baselineY - 4, 12, 6);
+          ctx.fillRect(x0 - 6, restBase - 4, 12, 6);
       } else if (code === 'c') {
           // Corchea (tipo 7)
-          const y0 = baselineY;
+          const y0 = restBase;
           ctx.beginPath();
           ctx.arc(x0 - 3, y0 - 5, 3, 0, Math.PI * 2);
           ctx.fill();
@@ -808,7 +809,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           ctx.stroke();
       } else if (code === 's') {
           // Semicorchea (doble 7)
-          const y0 = baselineY;
+          const y0 = restBase;
           ctx.beginPath();
           ctx.arc(x0 - 3, y0 - 8, 2.5, 0, Math.PI * 2);
           ctx.fill();
@@ -825,7 +826,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           ctx.stroke();
       } else {
           // Negra (o default para 'r'/'n')
-          const y0 = baselineY - 9;
+          const y0 = restBase - 9;
           ctx.beginPath();
           ctx.moveTo(x0 - 4, y0);
           ctx.lineTo(x0 + 3, y0 + 6);
