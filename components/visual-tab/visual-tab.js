@@ -1021,9 +1021,25 @@ async function renderVisualTab() {
 
         const rhythmChar = block.rhythmStems ? block.rhythmStems[i] : null;
         const isBar = block.strings[0][i] === "|";
+        let isRestCol = false;
+
+        if (rhythmChar && rhythmChar.toLowerCase() === "r") {
+          isRestCol = true;
+        } else if (block.strings) {
+          let hasNote = false;
+          let hasZ = false;
+          for (let s = 0; s < block.strings.length; s++) {
+            const ch = block.strings[s][i];
+            if (/\d/.test(ch) || ch.toLowerCase() === "x") hasNote = true;
+            if (ch && ch.toLowerCase() === "z") hasZ = true;
+          }
+          if (hasZ && !hasNote) isRestCol = true;
+        }
 
         if (isBar) {
           w = 0; // sin avance en barras de compás
+        } else if (isRestCol) {
+          w = BASE_FRET_WIDTH; // silencios: ancho base fijo
         } else if (rhythmChar && rhythmChar !== "|") {
           if (rhythmChar.trim() === "") {
             w = COMPACT_FRET_WIDTH; // sin figura: espaciado mínimo
