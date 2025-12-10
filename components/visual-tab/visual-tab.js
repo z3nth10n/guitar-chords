@@ -1213,8 +1213,9 @@ async function renderVisualTab() {
         const line = block.rhythmStems;
         for (let i = 0; i < line.length; i++) {
           const ch = line[i];
-          const x = getX(i);
+          const startX = getX(i);
           const w = getWidth(i);
+          const x = startX + w / 2;
 
           // Detectar silencio por 'z' en las cuerdas
           // Un compás es silencio si NO hay notas y hay al menos una 'z' (o es 'r' explícito)
@@ -1314,15 +1315,24 @@ async function renderVisualTab() {
             gradient.addColorStop(1, "#1d4ed8");
             ctx.fillStyle = gradient;
 
-            ctx.beginPath();
-            const baseW = Math.max(
-              getWidth(charIndex),
-              ctx.measureText(chordName).width + 30,
-              50
-            );
-            const w = baseW;
+            const startX = getX(charIndex);
+            const colW = Math.max(8, getWidth(charIndex));
+            let fontSize = 22;
+            const padding = 10;
+            let availableW = Math.max(12, colW - 4);
 
-            ctx.roundRect(x - 15, blockTop, w, blockHeight, 10);
+            ctx.font = `bold ${fontSize}px Arial`;
+            let textW = ctx.measureText(chordName).width;
+            while (textW + padding > availableW && fontSize > 10) {
+              fontSize -= 1;
+              ctx.font = `bold ${fontSize}px Arial`;
+              textW = ctx.measureText(chordName).width;
+            }
+
+            const w = availableW;
+
+            ctx.beginPath();
+            ctx.roundRect(startX, blockTop, w, blockHeight, 10);
             ctx.fill();
 
             ctx.strokeStyle = "#60a5fa";
@@ -1330,11 +1340,15 @@ async function renderVisualTab() {
             ctx.stroke();
 
             ctx.fillStyle = "#fff";
-            ctx.font = "bold 24px Arial";
+            ctx.font = `bold ${fontSize}px Arial`;
             ctx.textAlign = "center";
             ctx.shadowColor = "rgba(0,0,0,0.65)";
             ctx.shadowBlur = 6;
-            ctx.fillText(chordName, x + w / 2 - 15, blockTop + blockHeight / 2 + 8);
+            ctx.fillText(
+              chordName,
+              startX + w / 2,
+              blockTop + blockHeight / 2 + 8
+            );
             ctx.shadowBlur = 0;
 
             if (interactiveRegions) {
@@ -1354,9 +1368,9 @@ async function renderVisualTab() {
                 }
               }
               interactiveRegions.push({
-                x: x - 15,
+                x: startX,
                 y: blockTop,
-                w: w,
+                w,
                 h: blockHeight,
                 tooltip: frets.join("-"),
               });
@@ -1385,8 +1399,9 @@ async function renderVisualTab() {
         const y = TOP_MARGIN + s * STRING_SPACING;
 
         for (let i = 0; i < line.length; i++) {
-          const x = getX(i);
+          const startX = getX(i);
           const w = getWidth(i);
+          const centerX = startX + w / 2;
           const fretInfo = getFretAt(line, i);
 
           if (fretInfo) {
@@ -1396,7 +1411,8 @@ async function renderVisualTab() {
 
             const baseColor = stringColors[s];
             const lightColor = lightenColor(baseColor, 0.3);
-            const noteWidth = Math.max(20, w);
+            const availableW = Math.max(6, w);
+            const noteWidth = Math.max(14, availableW - 2);
             const noteHeight = 32; // altura fija; solo la anchura sigue la figura temporal
             const radius = noteHeight / 2;
 
@@ -1405,9 +1421,9 @@ async function renderVisualTab() {
             ctx.shadowBlur = 6;
 
             const grad = ctx.createLinearGradient(
-              x,
+              centerX,
               y - noteHeight / 2,
-              x,
+              centerX,
               y + noteHeight / 2
             );
             grad.addColorStop(0, lightColor);
@@ -1416,7 +1432,7 @@ async function renderVisualTab() {
 
             ctx.beginPath();
             ctx.roundRect(
-              x - noteWidth / 2,
+              startX + (w - noteWidth) / 2,
               y - noteHeight / 2,
               noteWidth,
               noteHeight,
@@ -1434,7 +1450,7 @@ async function renderVisualTab() {
             ctx.textAlign = "center";
             ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
             ctx.shadowBlur = 4;
-            ctx.fillText(fretInfo.value, x, y + 5);
+            ctx.fillText(fretInfo.value, centerX, y + 5);
             ctx.restore();
             continue;
           }
