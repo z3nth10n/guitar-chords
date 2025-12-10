@@ -848,10 +848,6 @@ if (!window.__COMPONENT_ROUTER_ACTIVE) {
   initChordLibrary();
 }
 
-window.renderChordLibrary = renderChordLibrary;
-
-})();
-
 function init() {
   renderRootPicker();
   renderTypePicker();
@@ -2737,3 +2733,6 @@ function drawChord(chord) {
     ctx.stroke();
   }
 }
+window.renderChordLibrary = renderChordLibrary;
+
+})();
