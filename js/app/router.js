@@ -6,6 +6,8 @@
   const portalParent = portalView ? portalView.parentElement : null;
   const portalNextSibling = portalView ? portalView.nextSibling : null;
   const componentView = document.getElementById("component-view");
+  const globalLangSelect = document.getElementById("globalLangSelect");
+  const globalBackButton = document.getElementById("global-back-btn");
 
   const templateCache = new Map();
   const loadedStyles = new Set();
@@ -73,6 +75,10 @@
     return view && routes[view] ? view : "home";
   }
 
+  if (globalBackButton) {
+    globalBackButton.classList.add("hidden");
+  }
+
   function buildRouteHref(routeName) {
     const url = new URL(window.location.href);
     if (!routeName || routeName === "home") {
@@ -96,6 +102,45 @@
       });
       link.dataset.routeBound = "true";
     });
+  }
+
+  function getGlobalLanguage() {
+    const saved = localStorage.getItem("portal_selectedLang");
+    if (saved) return saved;
+    if (globalLangSelect && globalLangSelect.value) {
+      return globalLangSelect.value;
+    }
+    const browserLang = navigator.language || navigator.userLanguage || "en";
+    return browserLang.startsWith("es") ? "es" : "en";
+  }
+
+  function updateGlobalLanguageSelection(lang, triggerChange = false) {
+    if (!lang) return;
+    if (globalLangSelect) {
+      globalLangSelect.value = lang;
+      if (triggerChange) {
+        const evt = new Event("change", { bubbles: true });
+        globalLangSelect.dispatchEvent(evt);
+      }
+    }
+    localStorage.setItem("portal_selectedLang", lang);
+  }
+
+  function syncComponentLanguage(lang, triggerChange = true) {
+    if (!componentView) return;
+    const compLangSelect = componentView.querySelector("#langSelect");
+    if (compLangSelect) {
+      compLangSelect.value = lang;
+      if (triggerChange) {
+        const evt = new Event("change", { bubbles: true });
+        compLangSelect.dispatchEvent(evt);
+      }
+    }
+  }
+
+  function toggleBackButton(show) {
+    if (!globalBackButton) return;
+    globalBackButton.classList.toggle("hidden", !show);
   }
 
   function restorePortalIfNeeded() {
@@ -135,12 +180,14 @@
   }
 
   function resolveLanguage(route) {
+    const globalLang = getGlobalLanguage();
+    if (globalLang) return globalLang;
+
     if (route && route.langStorageKey) {
       const saved = localStorage.getItem(route.langStorageKey);
       if (saved) return saved;
     }
-    const portalSaved = localStorage.getItem("portal_selectedLang");
-    if (portalSaved) return portalSaved;
+
     const browserLang = navigator.language || navigator.userLanguage || "en";
     return browserLang.startsWith("es") ? "es" : "en";
   }
@@ -213,8 +260,10 @@
     }
 
     if (route.name === "home") {
+      toggleBackButton(false);
       setViewVisibility(true);
       attachRouteLinks(portalView);
+      updateGlobalLanguageSelection(lang, false);
       if (window.setTranslationPrefix) {
         window.setTranslationPrefix("index", `${ABSOLUTE_PATH}langs`);
       }
@@ -228,6 +277,7 @@
       return;
     }
 
+    toggleBackButton(true);
     setViewVisibility(false);
     if (componentView) {
       componentView.innerHTML = "";
@@ -258,6 +308,9 @@
         window[route.initFunction]();
       }
 
+      updateGlobalLanguageSelection(lang, false);
+      syncComponentLanguage(lang, true);
+
       window.scrollTo(0, 0);
     } catch (error) {
       console.error("Error loading route", route.name, error);
@@ -271,6 +324,21 @@
   window.addEventListener("popstate", () => {
     navigate(currentRouteName(), { replaceHistory: true, skipUrlUpdate: true });
   });
+
+  if (globalLangSelect) {
+    globalLangSelect.addEventListener("change", (event) => {
+      const lang = event.target.value || "en";
+      updateGlobalLanguageSelection(lang, false);
+
+      if (window.loadTranslations) {
+        window.loadTranslations(lang).then(() => {
+          syncComponentLanguage(lang, true);
+        });
+      } else {
+        syncComponentLanguage(lang, true);
+      }
+    });
+  }
 
   attachRouteLinks(document);
   navigate(currentRouteName(), { replaceHistory: true });

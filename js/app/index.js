@@ -4,7 +4,10 @@ document.addEventListener("DOMContentLoaded", () => {
     window.setTranslationPrefix("index");
   }
 
-  const langSelect = document.getElementById("langSelect");
+  const langSelect =
+    document.getElementById("globalLangSelect") ||
+    document.getElementById("langSelect");
+  const isGlobalSelector = langSelect && langSelect.id === "globalLangSelect";
 
   // Detect browser language
   const browserLang = navigator.language || navigator.userLanguage || "en";
@@ -18,17 +21,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (langSelect) {
     langSelect.value = userLang;
-    langSelect.addEventListener("change", (e) => {
-      const newLang = e.target.value;
-      localStorage.setItem("portal_selectedLang", newLang);
-      if (window.loadTranslations) {
-        window.loadTranslations(newLang);
-      }
-    });
+
+    if (!isGlobalSelector) {
+      langSelect.addEventListener("change", (e) => {
+        const newLang = e.target.value;
+        localStorage.setItem("portal_selectedLang", newLang);
+        if (window.loadTranslations) {
+          window.loadTranslations(newLang);
+        }
+      });
+    }
   }
 
-  // Load initial translations
-  if (window.loadTranslations) {
+  // Load initial translations (global selector handled by router)
+  if (window.loadTranslations && !isGlobalSelector) {
     window.loadTranslations(userLang);
   }
 });

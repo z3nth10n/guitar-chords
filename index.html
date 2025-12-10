@@ -35,13 +35,18 @@
   </script>
 </head>
 <body>
+  <div id="global-controls" class="global-controls">
+    <button id="global-back-btn" class="global-back-button" data-route="home" aria-label="Back to home">
+      <span class="material-icons">arrow_back</span>
+    </button>
+    <button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Toggle theme"></button>
+    <select id="globalLangSelect" aria-label="Language selector">
+      <option value="en">English</option>
+      <option value="es">Español</option>
+    </select>
+  </div>
+
   <div class="portal-container" id="portal-view">
-    <div class="lang-selector">
-      <select id="langSelect">
-        <option value="en">English</option>
-        <option value="es">Español</option>
-      </select>
-    </div>
 
     <h1 class="main-title" data-i18n="portal_title">Guitar Tools</h1>
     <p class="main-subtitle" data-i18n="portal_subtitle">Essential utilities for every guitarist</p>

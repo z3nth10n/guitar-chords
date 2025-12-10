@@ -30,20 +30,10 @@
   function initTheme() {
     const theme = getTheme();
     setTheme(theme);
-    
-    // Create button if it doesn't exist
-    if (!document.getElementById('theme-toggle-btn')) {
-      const btn = document.createElement('button');
-      btn.id = 'theme-toggle-btn';
-      btn.className = 'theme-toggle-btn';
+
+    const btn = document.getElementById('theme-toggle-btn');
+    if (btn) {
       btn.onclick = toggleTheme;
-      
-      // Check if lang-selector exists to adjust position class
-      if (document.querySelector('.lang-selector')) {
-        btn.classList.add('has-lang-selector');
-      }
-      
-      document.body.appendChild(btn);
       updateButtonIcon(theme);
     }
   }
