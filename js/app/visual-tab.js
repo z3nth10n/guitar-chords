@@ -1149,8 +1149,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Draw Rhythm / Time Figures (Layer 4 - Bottom)
     iterateBlocks((block, getX, getWidth) => {
-      const bottomY = TOP_MARGIN + 5 * STRING_SPACING + 40;
-      const middleY = TOP_MARGIN + 2.5 * STRING_SPACING;
+      const rhythmYOffset = showChords && block.chords ? 30 : 0;
+      const bottomY = TOP_MARGIN + 5 * STRING_SPACING + 40 + rhythmYOffset;
+      const middleY = TOP_MARGIN + 2.5 * STRING_SPACING + rhythmYOffset;
 
       if (block.rhythmStems) {
         const line = block.rhythmStems;
@@ -1191,7 +1192,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             ctx.stroke();
           } else if (ch !== " ") {
             if (isRest) {
-                drawRhythmSymbol(ctx, ch, x, middleY, w, true);
+                drawRhythmSymbol(ctx, ch, x, middleY - rhythmYOffset, w, true);
             } else {
                 drawRhythmSymbol(ctx, ch, x, bottomY, w, false);
             }
