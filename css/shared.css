@@ -119,6 +119,14 @@
   width: 100%;
 }
 
+.component-active #portal-view {
+  display: none !important;
+}
+
+.component-active #component-view {
+  display: block;
+}
+
 .route-error {
   background: var(--card-bg);
   border: 1px solid var(--border);

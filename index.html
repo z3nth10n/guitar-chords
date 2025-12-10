@@ -23,6 +23,16 @@
 
   <link rel="stylesheet" href="css/shared.css">
   <link rel="stylesheet" href="css/index.css">
+
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const view = params.get("view");
+      if (view) {
+        document.documentElement.classList.add("component-active");
+      }
+    })();
+  </script>
 </head>
 <body>
   <div class="portal-container" id="portal-view">

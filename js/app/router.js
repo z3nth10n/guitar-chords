@@ -3,6 +3,8 @@
   window.__COMPONENT_ROUTER_ACTIVE = true;
 
   const portalView = document.getElementById("portal-view");
+  const portalParent = portalView ? portalView.parentElement : null;
+  const portalNextSibling = portalView ? portalView.nextSibling : null;
   const componentView = document.getElementById("component-view");
 
   const templateCache = new Map();
@@ -96,9 +98,32 @@
     });
   }
 
+  function restorePortalIfNeeded() {
+    if (!portalView || !portalParent) return;
+    if (!portalView.isConnected) {
+      if (portalNextSibling && portalNextSibling.parentElement === portalParent) {
+        portalParent.insertBefore(portalView, portalNextSibling);
+      } else {
+        portalParent.appendChild(portalView);
+      }
+    }
+  }
+
+  function removePortalIfNeeded() {
+    if (portalView && portalView.isConnected) {
+      portalView.remove();
+    }
+  }
+
   function setViewVisibility(showPortal) {
-    if (portalView) {
-      portalView.classList.toggle("view-hidden", !showPortal);
+    document.documentElement.classList.toggle("component-active", !showPortal);
+    if (showPortal) {
+      restorePortalIfNeeded();
+      if (portalView) {
+        portalView.classList.remove("view-hidden");
+      }
+    } else {
+      removePortalIfNeeded();
     }
     if (componentView) {
       componentView.classList.toggle("view-hidden", showPortal);
