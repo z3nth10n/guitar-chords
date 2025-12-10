@@ -676,9 +676,41 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const sliceLine = (line) => (line ? line.slice(start, end) : null);
 
+        let chordsSlice = sliceLine(block.chords);
+        if (chordsSlice && block.chords) {
+          // Fix: If the slice starts with '*', it means it's a continuation of a chord
+          // from the previous chunk. We must resolve it to the actual chord name.
+          const firstTokenMatch = /([A-Za-z0-9#]+|\*)/.exec(chordsSlice);
+          if (firstTokenMatch && firstTokenMatch[0] === "*") {
+            // Find the last chord in the original string before 'start'
+            const regex = /([A-Za-z0-9#]+|\*)/g;
+            let match;
+            let lastFound = "";
+            while ((match = regex.exec(block.chords)) !== null) {
+              if (match.index >= start) break;
+              if (match[0] !== "*") {
+                lastFound = match[0];
+              }
+            }
+
+            if (lastFound) {
+              // Overwrite '*' with the actual chord name
+              const indexInSlice = firstTokenMatch.index;
+              const name = lastFound;
+              let newSliceArr = chordsSlice.split("");
+              for (let k = 0; k < name.length; k++) {
+                if (indexInSlice + k < newSliceArr.length) {
+                  newSliceArr[indexInSlice + k] = name[k];
+                }
+              }
+              chordsSlice = newSliceArr.join("");
+            }
+          }
+        }
+
         const chunkBlock = {
           strings: block.strings.map(sliceLine),
-          chords: sliceLine(block.chords),
+          chords: chordsSlice,
           pm: sliceLine(block.pm),
           measureNums: sliceLine(block.measureNums),
           rhythmStems: sliceLine(block.rhythmStems),
@@ -847,7 +879,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const isFirstChunk = chunkIndex === 0;
 
     const BASE_FRET_WIDTH = 40;
-    const COMPACT_FRET_WIDTH = 1; // Ancho reducido para compases vacíos
+    const COMPACT_FRET_WIDTH = 20; // Ancho reducido para compases vacíos
     const STRING_SPACING = 40;
     const TOP_MARGIN = 100; // Increased for measure numbers
     const LEFT_MARGIN = isFirstChunk ? 60 : 20;
@@ -1104,16 +1136,27 @@ document.addEventListener("DOMContentLoaded", async () => {
           const w = getWidth(i);
 
           // Detectar silencio por 'z' en las cuerdas
-          let isRest = false;
+          // Un compás es silencio si NO hay notas y hay al menos una 'z' (o es 'r' explícito)
+          let hasNote = false;
+          let hasZ = false;
           if (block.strings) {
              for(let s=0; s<block.strings.length; s++) {
-                 if (block.strings[s][i] && block.strings[s][i].toLowerCase() === 'z') {
-                     isRest = true;
-                     break;
+                 const char = block.strings[s][i];
+                 if (/\d/.test(char) || char.toLowerCase() === 'x') {
+                     hasNote = true;
+                 }
+                 if (char && char.toLowerCase() === 'z') {
+                     hasZ = true;
                  }
              }
           }
-          if (ch.toLowerCase() === 'r') isRest = true;
+          
+          let isRest = false;
+          if (ch.toLowerCase() === 'r') {
+              isRest = true;
+          } else if (hasZ && !hasNote) {
+              isRest = true;
+          }
 
           if (ch === "|") {
             ctx.strokeStyle = "#666";
@@ -1259,9 +1302,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           const w = getWidth(i);
 
           if (!isNaN(parseInt(char))) {
-            if (chordPositions.has(i)) {
-              continue;
-            }
+            // if (chordPositions.has(i)) {
+            //   continue;
+            // }
 
             ctx.fillStyle = stringColors[s];
             ctx.beginPath();
