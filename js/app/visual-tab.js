@@ -924,13 +924,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     iterateBlocks((block, currentX) => {
       if (block.chords) {
         const chordLine = block.chords;
-        const chordRegex = /([A-Za-z0-9#]+)/g;
+        // Regex to find chords OR the repetition marker '*'
+        const chordRegex = /([A-Za-z0-9#]+|\*)/g;
         let match;
+        let lastChordName = "";
+
         while ((match = chordRegex.exec(chordLine)) !== null) {
           if (match.index < 2) continue;
 
           const charIndex = match.index;
-          const chordName = match[0];
+          let chordName = match[0];
+
+          // Handle repetition marker
+          if (chordName === "*") {
+            if (lastChordName) {
+              chordName = lastChordName;
+            } else {
+              continue; 
+            }
+          } else {
+            lastChordName = chordName;
+          }
+
           const x = currentX + charIndex * fretWidth;
 
           let minString = 5;
@@ -1024,7 +1039,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     iterateBlocks((block, currentX) => {
       const chordPositions = new Set();
       if (block.chords) {
-        const chordRegex = /([A-Za-z0-9#]+)/g;
+        const chordRegex = /([A-Za-z0-9#]+|\*)/g;
         let match;
         while ((match = chordRegex.exec(block.chords)) !== null) {
           if (match.index >= 2) chordPositions.add(match.index);
@@ -1373,7 +1388,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     // But usually tabs have 'e|--...'
     // We should only detect chords where there are notes.
 
-    let lastChord = "";
+    let lastWrittenChord = "";
+    let lastChordEnd = -1;
 
     for (let i = 0; i < length; i++) {
       // Check if this column has notes
@@ -1386,13 +1402,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           const fret = parseInt(char);
           if (!isNaN(fret)) {
             hasNote = true;
-            // Calculate MIDI note
-            // Standard tuning: E A D G B e -> 40 45 50 55 59 64 (reversed in array usually?)
-            // In visual-tab.js: stringNames = ['e', 'B', 'G', 'D', 'A', 'E'];
-            // stringColors = ...
-            // So index 0 is high 'e' (MIDI 64), index 5 is low 'E' (MIDI 40).
-            // STANDARD_TUNING_MIDI in chord-by-fret was [64, 59, 55, 50, 45, 40] which matches.
-
             const openMidi = STANDARD_TUNING_MIDI[s];
             notesMidi.push(openMidi + fret);
           }
@@ -1400,55 +1409,41 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       if (hasNote && notesMidi.length >= 2) {
-        // Only detect if at least 2 notes? Or 3?
-        // Convert to PC
         const notesPc = notesMidi.map((m) => m % 12);
         const chord = detectChord(notesPc);
 
         if (chord) {
-          // Avoid repeating the same chord immediately if it's the same
-          if (chord.name !== lastChord) {
-            // Place chord name at index i
-            // We need to make sure we don't overwrite previous chord if it's too close
-            // But we are building an array of chars.
+          const name = chord.name;
+          
+          // Check if we overlap with previous text
+          const overlaps = (i < lastChordEnd);
 
-            const name = chord.name;
-            // Check if we have space
-            let canFit = true;
-            for (let k = 0; k < name.length; k++) {
-              if (i + k < length && chordLine[i + k] !== " ") {
-                // Overlap
-                // If the overlap is with the previous chord, maybe we shouldn't place this one
-                // or we should have placed the previous one earlier?
-                // For now, let's just skip if it overlaps?
-                // Or maybe we overwrite?
-                // Let's try to place it.
-              }
-            }
-
-            // Actually, let's just write it if there is space at i
-            // If previous chord is "Am" at i-1, then i is 'm'.
-            // We should probably space them out.
-
-            // Simple approach: Write the chord name into the array
-            for (let k = 0; k < name.length; k++) {
-              if (i + k < length) {
-                chordLine[i + k] = name[k];
-              }
-            }
-            lastChord = chord.name;
+          if (name === lastWrittenChord) {
+             // Same chord as previous -> use compact marker '*'
+             // This avoids overlap issues and visual clutter
+             if (i < length) {
+                 chordLine[i] = '*';
+                 lastChordEnd = i + 1;
+             }
+          } else {
+             // Different chord -> write full name
+             // (Even if it overlaps, we prioritize the new chord info)
+             for (let k = 0; k < name.length; k++) {
+               if (i + k < length) {
+                 chordLine[i + k] = name[k];
+               }
+             }
+             lastChordEnd = i + name.length;
+             lastWrittenChord = name;
           }
-        } else {
-          // If notes change but no chord detected, maybe reset lastChord?
-          // So if we go back to the same chord later it is redrawn.
-          // But maybe not reset immediately to avoid flickering on single note changes?
-          // Let's reset if we have notes but no chord.
-          lastChord = "";
         }
-      } else if (hasNote) {
-        // Single note or no chord detected
-        lastChord = "";
       }
+      // Note: we do NOT reset lastWrittenChord on gaps/single notes.
+      // This allows: Chord -> Gap -> Chord (same) to be marked as '*' or handled correctly.
+      // Actually, if there is a gap, we might want to write the full name again?
+      // User said "F#5 three times". If spaced, "F#5 ... F#5 ... F#5".
+      // If we use '*', it becomes "F#5 ... * ... *".
+      // This is cleaner and avoids the "EE" merge issue if they are close.
     }
 
     // Construct the line
