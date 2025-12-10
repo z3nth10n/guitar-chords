@@ -122,6 +122,10 @@
       if (portalView) {
         portalView.classList.remove("view-hidden");
       }
+      if (componentView) {
+        componentView.innerHTML = "";
+        componentView.classList.add("view-hidden");
+      }
     } else {
       removePortalIfNeeded();
     }
@@ -216,6 +220,9 @@
       }
       if (window.loadTranslations) {
         await window.loadTranslations(lang);
+      }
+      if (componentView) {
+        componentView.innerHTML = "";
       }
       window.scrollTo(0, 0);
       return;
