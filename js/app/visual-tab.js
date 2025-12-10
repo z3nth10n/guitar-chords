@@ -514,7 +514,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const parsedData = parseTabContent(tab.content);
-    console.log("parsedData", parsedData);
+    // console.log("parsedData", parsedData);
     renderVisualTab(parsedData);
   }
 
@@ -661,7 +661,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderChunk(blocks) {
-    console.log("renderChunk blocks:", blocks);
+    // console.log("renderChunk blocks:", blocks);
 
     const BASE_FRET_WIDTH = 40;
     const STRING_SPACING = 40;
@@ -710,10 +710,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     ctx.fillStyle = "#111";
     ctx.fillRect(0, 0, width, height);
 
-    console.log("canvas size", canvas.width, canvas.height);
+    // console.log("canvas size", canvas.width, canvas.height);
 
-    console.log("canvas element:", canvas);
-    console.log("canvas getContext:", ctx);
+    // console.log("canvas element:", canvas);
+    // console.log("canvas getContext:", ctx);
 
     const stringNames = ["e", "B", "G", "D", "A", "E"];
     const stringColors = [
@@ -1087,7 +1087,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Renderiza la tablatura completa creando varios canvas (uno por chunk)
   function renderVisualTab(blocks) {
-    console.log("renderVisualTab (multi-chunk) blocks:", blocks);
+    // console.log("renderVisualTab (multi-chunk) blocks:", blocks);
 
     if (!canvasWrapper || !baseCanvas) {
       console.error("No canvas wrapper or base canvas found");
@@ -1145,7 +1145,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (entry.isIntersecting && !info.rendered) {
             canvas = info.canvas;
             ctx = info.canvas.getContext("2d");
-            console.log("Rendering chunk", idx, "into canvas", info.canvas);
+            // console.log("Rendering chunk", idx, "into canvas", info.canvas);
             renderChunk(info.blocks);
             info.rendered = true;
           }
