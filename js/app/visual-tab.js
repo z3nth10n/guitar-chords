@@ -1353,8 +1353,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       },
       {
         root: canvasWrapper, // el scroll horizontal es del wrapper
-        threshold: 0.1, // con que se vea un 10% nos vale
-        // opcional: rootMargin: "0px 200px" para precargar un poco antes
+        // threshold: 0.1, // con que se vea un 10% nos vale
+        rootMargin: "0px 200px" // para precargar un poco antes
       }
     );
 
