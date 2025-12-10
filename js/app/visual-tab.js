@@ -598,23 +598,47 @@ document.addEventListener("DOMContentLoaded", async () => {
     return blocks;
   }
 
-  // Divide los bloques en "trozos" horizontales por columnas
-  // Para simplificar: cortamos cada N columnas, aunque pille compases a medias.
-  // Más adelante se puede refinar para cortar justo en '|' de measureNums.
-  const COLUMNS_PER_CHUNK = 200; // ajusta a gusto
+  // Nº de compases por canvas
+  const BARS_PER_CHUNK = 4; // o 2, 4, 8... a tu gusto
 
   function createChunks(blocks) {
     const chunks = [];
     if (!blocks || !blocks.length) return chunks;
 
-    // De momento asumimos 1 bloque grande (que es tu caso actual)
     blocks.forEach((block) => {
       if (!block.strings || !block.strings.length) return;
 
-      const length = block.strings[0].length;
+      const refLine = block.measureNums || block.strings[0];
+      const totalLen = refLine.length;
 
-      for (let start = 0; start < length; start += COLUMNS_PER_CHUNK) {
-        const end = Math.min(length, start + COLUMNS_PER_CHUNK);
+      // 1) Encontrar todas las posiciones de '|'
+      const barPositions = [];
+      for (let i = 0; i < refLine.length; i++) {
+        if (refLine[i] === "|") {
+          barPositions.push(i);
+        }
+      }
+
+      // Si no hay barras de compás, hacemos un único chunk con el bloque entero
+      if (barPositions.length === 0) {
+        chunks.push([block]);
+        return;
+      }
+
+      // 2) Construir rangos de compás [start, end)
+      //    Cada compás va de un '|' al siguiente '|' (o al final de la línea)
+      const bars = [];
+      for (let i = 0; i < barPositions.length; i++) {
+        const start = barPositions[i];
+        const end = i + 1 < barPositions.length ? barPositions[i + 1] : totalLen;
+        bars.push({ start, end });
+      }
+
+      // 3) Agrupar compases en chunks de BARS_PER_CHUNK
+      for (let i = 0; i < bars.length; i += BARS_PER_CHUNK) {
+        const group = bars.slice(i, i + BARS_PER_CHUNK);
+        const start = group[0].start;
+        const end = group[group.length - 1].end;
 
         const sliceLine = (line) => (line ? line.slice(start, end) : null);
 
@@ -627,7 +651,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           rhythmBeams: sliceLine(block.rhythmBeams),
         };
 
-        chunks.push([chunkBlock]); // cada chunk es un array de blocks (para reutilizar la lógica)
+        // Cada chunk es un array de blocks, para reutilizar renderChunk()
+        chunks.push([chunkBlock]);
       }
     });
 
