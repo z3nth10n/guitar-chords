@@ -1209,8 +1209,6 @@ async function renderVisualTab() {
   async function playTab(tab) {
     stopPlayback();
     currentTab = tab;
-    selectionContainer.style.display = "none";
-    playerContainer.style.display = "flex";
 
     // If the tab is remote and we do not have the content yet, fetch it from the API
     if (tab.isRemote && !tab.content) {
@@ -1290,6 +1288,13 @@ async function renderVisualTab() {
     if (!tab.content) {
       console.warn("Tab has no content to render");
       return;
+    }
+
+    if (selectionContainer) {
+      selectionContainer.style.display = "none";
+    }
+    if (playerContainer) {
+      playerContainer.style.display = "flex";
     }
 
     const parsedData = parseTabContent(tab.content);

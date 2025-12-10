@@ -186,7 +186,7 @@
 
 #component-view > * {
   width: 100%;
-  max-width: 1100px;
+  /* max-width: 1100px; */
 }
 
 /* .component-active #component-view .lang-selector,
