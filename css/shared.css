@@ -146,6 +146,12 @@
 
 #component-view {
   width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
 }
 
 .component-active #portal-view {
@@ -153,7 +159,7 @@
 }
 
 .component-active #component-view {
-  display: block;
+  display: flex;
 }
 
 .component-active #component-view .lang-selector,
