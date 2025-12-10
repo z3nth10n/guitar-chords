@@ -1,3 +1,7 @@
+(function () {
+if (window.__CHORD_LIBRARY_LOADED) return;
+window.__CHORD_LIBRARY_LOADED = true;
+
 // Chord Library Logic
 
 // --- Data ---
@@ -686,7 +690,9 @@ const ctx = canvas.getContext("2d");
 const prevBtn = document.getElementById("prevVoicing");
 const nextBtn = document.getElementById("nextVoicing");
 const voicingCounter = document.getElementById("voicingCounter");
-const langSelect = document.getElementById("langSelect");
+const langSelect =
+  document.getElementById("globalLangSelect") ||
+  document.getElementById("langSelect");
 const notationSelect = document.getElementById("notationSelect");
 const soundSelect = document.getElementById("soundSelect");
 const tuningSelect = document.getElementById("tuningSelect");
@@ -745,7 +751,9 @@ async function renderChordLibrary() {
   if (savedLang) {
     userLang = savedLang;
   }
-  langSelect.value = userLang;
+  if (langSelect) {
+    langSelect.value = userLang;
+  }
 
   const savedNotation = localStorage.getItem("guitar_notation");
   if (savedNotation) {
@@ -783,30 +791,30 @@ async function renderChordLibrary() {
   }
 
   // Event Listeners for Settings
-  langSelect.addEventListener("change", (e) => {
-    const newLang = e.target.value;
-    localStorage.setItem("guitar_lang", newLang);
+  if (langSelect) {
+    langSelect.addEventListener("change", (e) => {
+      const newLang = e.target.value;
+      localStorage.setItem("guitar_lang", newLang);
 
-    // Auto-switch notation if not manually set?
-    // Let's stick to the pattern in other tools: switch notation on lang change
-    if (newLang === "en") {
-      state.notation = "anglo";
-      notationSelect.value = "anglo";
-    } else if (newLang === "es") {
-      state.notation = "latin";
-      notationSelect.value = "latin";
-    }
-    localStorage.setItem("guitar_notation", state.notation);
+      if (newLang === "en") {
+        state.notation = "anglo";
+        notationSelect.value = "anglo";
+      } else if (newLang === "es") {
+        state.notation = "latin";
+        notationSelect.value = "latin";
+      }
+      localStorage.setItem("guitar_notation", state.notation);
 
-    if (window.loadTranslations) {
-      window.loadTranslations(newLang, () => {
-        renderRootPicker(); // Re-render to update note names
-        renderTypePicker(); // Re-render types to update translations
-        renderStringTunings();
-        updateDisplay();
-      });
-    }
-  });
+      if (window.loadTranslations) {
+        window.loadTranslations(newLang, () => {
+          renderRootPicker();
+          renderTypePicker();
+          renderStringTunings();
+          updateDisplay();
+        });
+      }
+    });
+  }
 
   notationSelect.addEventListener("change", (e) => {
     state.notation = e.target.value;
@@ -841,6 +849,8 @@ if (!window.__COMPONENT_ROUTER_ACTIVE) {
 }
 
 window.renderChordLibrary = renderChordLibrary;
+
+})();
 
 function init() {
   renderRootPicker();

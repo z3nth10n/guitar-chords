@@ -1,3 +1,7 @@
+(function () {
+if (window.__VISUAL_TAB_LOADED) return;
+window.__VISUAL_TAB_LOADED = true;
+
 window.onerror = function (message, source, lineno, colno, error) {
   console.error(
     "Global error:",
@@ -52,7 +56,9 @@ async function renderVisualTab() {
   }
 
   // Language & Notation Selector Logic
-  const langSelect = document.getElementById("langSelect");
+  const langSelect =
+    document.getElementById("globalLangSelect") ||
+    document.getElementById("langSelect");
   const notationSelect = document.getElementById("notationSelect");
   const showChordsCheckbox = document.getElementById("showChordsCheckbox");
 
@@ -115,7 +121,6 @@ async function renderVisualTab() {
         window.loadTranslations(newLang);
       }
 
-      // Auto-switch notation
       if (newLang === "es") {
         currentNotation = "latin";
       } else {
@@ -126,7 +131,6 @@ async function renderVisualTab() {
       }
       localStorage.setItem("portal_notation", currentNotation);
 
-      // Re-render if a tab is active
       if (currentTab) {
         playTab(currentTab);
       }
@@ -1835,3 +1839,5 @@ if (!window.__COMPONENT_ROUTER_ACTIVE) {
 }
 
 window.renderVisualTab = renderVisualTab;
+
+})();

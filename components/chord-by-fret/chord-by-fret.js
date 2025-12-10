@@ -1,3 +1,7 @@
+(function () {
+if (window.__CHORD_BY_FRET_LOADED) return;
+window.__CHORD_BY_FRET_LOADED = true;
+
 // Notes by semitone (pitch class)
 const NOTE_NAMES = [
   "C",
@@ -97,7 +101,9 @@ async function renderChordByFret() {
   const stringTunings = Array.from(document.querySelectorAll(".string-tuning"));
   const saveTuningButton = document.getElementById("saveTuningButton");
   const calcButton = document.getElementById("calcButton");
-  const langSelect = document.getElementById("langSelect");
+  const langSelect =
+    document.getElementById("globalLangSelect") ||
+    document.getElementById("langSelect");
   const showOctaveCb = document.getElementById("showOctaveCb");
 
   currentNotation = notationSelect.value || "latin";
@@ -127,7 +133,9 @@ async function renderChordByFret() {
   if (savedLang) {
     userLang = savedLang;
   }
-  langSelect.value = userLang;
+  if (langSelect) {
+    langSelect.value = userLang;
+  }
 
   // Sync notation with default language or saved preference
   if (savedNotation) {
@@ -160,26 +168,28 @@ async function renderChordByFret() {
     await window.loadTranslations(userLang, updateChordUI);
   }
 
-  langSelect.addEventListener("change", (e) => {
-    const newLang = e.target.value;
-    localStorage.setItem("chordByFret_selectedLang", newLang);
+  if (langSelect) {
+    langSelect.addEventListener("change", (e) => {
+      const newLang = e.target.value;
+      localStorage.setItem("chordByFret_selectedLang", newLang);
 
-    // Auto-switch notation based on language ONLY if not manually overridden (optional, but user asked to save notation)
-    // Actually, if user changes language, we usually switch notation defaults, but if they have a saved notation preference, maybe we should respect it?
-    // The current behavior switches notation on language change. I will keep it but also update the saved notation.
-    if (newLang === "en") {
-      notationSelect.value = "anglo";
-      currentNotation = "anglo";
-    } else if (newLang === "es") {
-      notationSelect.value = "latin";
-      currentNotation = "latin";
-    }
-    localStorage.setItem("chordByFret_selectedNotation", currentNotation);
+      // Auto-switch notation based on language ONLY if not manually overridden (optional, but user asked to save notation)
+      // Actually, if user changes language, we usually switch notation defaults, but if they have a saved notation preference, maybe we should respect it?
+      // The current behavior switches notation on language change. I will keep it but also update the saved notation.
+      if (newLang === "en") {
+        notationSelect.value = "anglo";
+        currentNotation = "anglo";
+      } else if (newLang === "es") {
+        notationSelect.value = "latin";
+        currentNotation = "latin";
+      }
+      localStorage.setItem("chordByFret_selectedNotation", currentNotation);
 
-    if (window.loadTranslations) {
-      window.loadTranslations(newLang, updateChordUI);
-    }
-  });
+      if (window.loadTranslations) {
+        window.loadTranslations(newLang, updateChordUI);
+      }
+    });
+  }
 
   notationSelect.addEventListener("change", (e) => {
     currentNotation = e.target.value;
@@ -256,6 +266,8 @@ if (!window.__COMPONENT_ROUTER_ACTIVE) {
 }
 
 window.renderChordByFret = renderChordByFret;
+
+})();
 
 function buildStringTuningOptions() {
   const stringTunings = document.querySelectorAll(".string-tuning");

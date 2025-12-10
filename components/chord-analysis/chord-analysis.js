@@ -1,3 +1,7 @@
+(function () {
+if (window.__CHORD_ANALYSIS_LOADED) return;
+window.__CHORD_ANALYSIS_LOADED = true;
+
 // ===================== Basic Configuration =====================
 const NOTE_NAMES = [
   "C",
@@ -201,7 +205,9 @@ const noteDetail = document.getElementById("noteDetail");
 const stringFretDisplay = document.getElementById("stringFretDisplay");
 const stringFretDetail = document.getElementById("stringFretDetail");
 const errorsEl = document.getElementById("errors");
-const langSelect = document.getElementById("langSelect");
+const langSelect =
+  document.getElementById("globalLangSelect") ||
+  document.getElementById("langSelect");
 const intervalInput = document.getElementById("intervalInput");
 const saveIntervalBtn = document.getElementById("saveIntervalBtn");
 
@@ -935,9 +941,6 @@ function renderChordAnalysis() {
       const newLang = e.target.value;
       localStorage.setItem("chordAnalysis_selectedLang", newLang);
 
-      // Auto-switch notation only if user hasn't explicitly saved a preference?
-      // Or just follow the pattern: language change -> update notation default.
-      // Let's update it to match the language default, but update the selector too.
       if (newLang === "en") {
         currentNotation = "anglo";
       } else if (newLang === "es") {
@@ -948,7 +951,6 @@ function renderChordAnalysis() {
 
       if (window.loadTranslations) {
         window.loadTranslations(newLang, () => {
-          // Update UI text that isn't handled by data-i18n automatically
           if (running) {
             toggleButton.textContent = window.t("btn_stop");
             statusText.textContent = window.t("status_listening");
@@ -985,3 +987,5 @@ if (!window.__COMPONENT_ROUTER_ACTIVE) {
 }
 
 window.renderChordAnalysis = renderChordAnalysis;
+
+})();
