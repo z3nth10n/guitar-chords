@@ -774,6 +774,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     r: { type: "rest" },
   };
 
+  function getRhythmWidthMultiplier(ch) {
+    if (!ch) return 1;
+    const code = ch.toLowerCase();
+    switch (code) {
+      case "t": // fusa
+        return 0.5;
+      case "f": // semifusa (no habitual, por si acaso)
+        return 0.25;
+      case "c": // corchea
+        return 2;
+      case "n": // negra
+        return 4;
+      case "h": // blanca
+      case "b":
+        return 8;
+      case "w": // redonda
+        return 16;
+      case "s": // semicorchea (base)
+      case "r": // silencio genérico
+      default:
+        return 1;
+    }
+  }
+
   function drawRhythmSymbol(ctx, ch, x, baselineY, fretWidth, isRest = false) {
     const code = ch.toLowerCase();
     const shape = RHYTHM_GLYPHS[code];
@@ -960,12 +984,21 @@ document.addEventListener("DOMContentLoaded", async () => {
       let x = 0;
       for (let i = 0; i < len; i++) {
         columnX[i] = x;
-        // Si es compacta usamos ancho pequeño, si no el base
-        // Las barras '|' las dejamos con ancho base para que se vean bien, o compactas?
-        // Mejor dejarlas base si son separadores, o compactas si están en zona compacta.
-        // Vamos a usar la lógica: si la columna está marcada compacta, ancho pequeño.
-        // (Las barras '|' no se marcaron en el bucle anterior, así que quedan grandes, lo cual está bien para separar)
-        const w = isColumnCompact[i] ? COMPACT_FRET_WIDTH : BASE_FRET_WIDTH;
+        let w;
+
+        const rhythmChar = block.rhythmStems ? block.rhythmStems[i] : null;
+        if (rhythmChar && rhythmChar !== "|") {
+          if (rhythmChar.trim() === "") {
+            w = COMPACT_FRET_WIDTH; // sin figura: espaciado mínimo
+          } else {
+            w = BASE_FRET_WIDTH * getRhythmWidthMultiplier(rhythmChar);
+          }
+        } else {
+          // Si es compacta usamos ancho pequeño, si no el base
+          // (Las barras '|' quedan con ancho base para separar)
+          w = isColumnCompact[i] ? COMPACT_FRET_WIDTH : BASE_FRET_WIDTH;
+        }
+
         columnWidths[i] = w;
         x += w;
       }
@@ -1259,7 +1292,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             ctx.fillStyle = gradient;
 
             ctx.beginPath();
-            const w = Math.max(50, ctx.measureText(chordName).width + 30);
+            const baseW = Math.max(
+              getWidth(charIndex),
+              ctx.measureText(chordName).width + 30,
+              50
+            );
+            const w = baseW;
 
             ctx.roundRect(x - 15, blockTop, w, blockHeight, 10);
             ctx.fill();
