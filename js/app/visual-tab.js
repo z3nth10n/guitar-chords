@@ -847,6 +847,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const isFirstChunk = chunkIndex === 0;
 
     const BASE_FRET_WIDTH = 40;
+    const COMPACT_FRET_WIDTH = 1; // Ancho reducido para compases vacíos
     const STRING_SPACING = 40;
     const TOP_MARGIN = 100; // Increased for measure numbers
     const LEFT_MARGIN = isFirstChunk ? 60 : 20;
@@ -857,32 +858,73 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // Calculamos el número máximo de columnas (caracteres) entre todas las líneas
-    const getMaxLineLength = (str) => (str ? str.length : 0);
+    // 1. Pre-calcular layout (anchos variables)
+    const blockLayouts = new Map();
+    let totalWidthAllBlocks = 0;
 
-    let totalSteps = 0;
     blocks.forEach((block) => {
-      (block.strings || []).forEach((line) => {
-        totalSteps = Math.max(totalSteps, getMaxLineLength(line));
-      });
-      totalSteps = Math.max(totalSteps, getMaxLineLength(block.chords));
-      totalSteps = Math.max(totalSteps, getMaxLineLength(block.measureNums));
-      totalSteps = Math.max(totalSteps, getMaxLineLength(block.rhythmStems));
+      if (!block.strings || !block.strings.length) return;
+      const len = block.strings[0].length;
+      const columnX = new Float32Array(len);
+      const columnWidths = new Float32Array(len);
+      const isColumnCompact = new Uint8Array(len);
+
+      // Detectar compases vacíos
+      let currentBarStart = 0;
+
+      const checkRangeEmpty = (start, end) => {
+        for (let c = start; c < end; c++) {
+          for (let s = 0; s < block.strings.length; s++) {
+            const char = block.strings[s][c];
+            // Si hay dígito o 'x' (nota muerta), no es vacío
+            if (/\d/.test(char) || char.toLowerCase() === "x") return false;
+          }
+        }
+        return true;
+      };
+
+      for (let i = 0; i <= len; i++) {
+        const isBar = (i < len && block.strings[0][i] === "|") || i === len;
+        if (isBar) {
+          // Revisar el rango anterior [currentBarStart, i)
+          let start = currentBarStart;
+          // Si empieza con '|', saltarlo para el chequeo de contenido
+          if (start < len && block.strings[0][start] === "|") start++;
+
+          if (start < i) {
+            if (checkRangeEmpty(start, i)) {
+              // Marcar columnas como compactas
+              for (let k = start; k < i; k++) isColumnCompact[k] = 1;
+            }
+          }
+          currentBarStart = i;
+        }
+      }
+
+      let x = 0;
+      for (let i = 0; i < len; i++) {
+        columnX[i] = x;
+        // Si es compacta usamos ancho pequeño, si no el base
+        // Las barras '|' las dejamos con ancho base para que se vean bien, o compactas?
+        // Mejor dejarlas base si son separadores, o compactas si están en zona compacta.
+        // Vamos a usar la lógica: si la columna está marcada compacta, ancho pequeño.
+        // (Las barras '|' no se marcaron en el bucle anterior, así que quedan grandes, lo cual está bien para separar)
+        const w = isColumnCompact[i] ? COMPACT_FRET_WIDTH : BASE_FRET_WIDTH;
+        columnWidths[i] = w;
+        x += w;
+      }
+
+      blockLayouts.set(block, { columnX, columnWidths, totalWidth: x });
+      totalWidthAllBlocks += x;
     });
 
-    // Ajustamos el ancho de columna en función del total de steps
-    let fretWidth = BASE_FRET_WIDTH;
-    let naturalWidth = LEFT_MARGIN + totalSteps * BASE_FRET_WIDTH + 100;
+    // Ajustamos escala si nos pasamos del ancho máximo
+    let scale = 1;
+    let naturalWidth = LEFT_MARGIN + totalWidthAllBlocks + 100;
 
     if (naturalWidth > MAX_CANVAS_WIDTH) {
-      fretWidth = (MAX_CANVAS_WIDTH - LEFT_MARGIN - 100) / totalSteps;
-      naturalWidth = LEFT_MARGIN + totalSteps * fretWidth + 100;
-      console.log("Canvas demasiado ancho, comprimiendo:", {
-        totalSteps,
-        BASE_FRET_WIDTH,
-        fretWidth,
-        naturalWidth,
-      });
+      scale = (MAX_CANVAS_WIDTH - LEFT_MARGIN - 100) / totalWidthAllBlocks;
+      naturalWidth = MAX_CANVAS_WIDTH;
     }
 
     const width = naturalWidth;
@@ -895,11 +937,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     ctx.fillStyle = "#111";
     ctx.fillRect(0, 0, width, height);
 
-    // console.log("canvas size", canvas.width, canvas.height);
-
-    // console.log("canvas element:", canvas);
-    // console.log("canvas getContext:", ctx);
-
     const stringNames = ["e", "B", "G", "D", "A", "E"];
     const stringColors = [
       "#ef4444",
@@ -910,44 +947,43 @@ document.addEventListener("DOMContentLoaded", async () => {
       "#a855f7",
     ];
 
-    // Helper to iterate blocks and track X
+    // Helper to iterate blocks with variable X
     function iterateBlocks(callback) {
       let currentX = LEFT_MARGIN;
       blocks.forEach((block) => {
-        if (block.strings.length === 0) return;
-        const blockLength = block.strings[0].length;
-        callback(block, currentX);
-        currentX += blockLength * fretWidth;
+        if (!block.strings.length) return;
+        const layout = blockLayouts.get(block);
+        if (!layout) return;
+
+        const getX = (i) => currentX + layout.columnX[i] * scale;
+        const getWidth = (i) => layout.columnWidths[i] * scale;
+
+        callback(block, getX, getWidth);
+        currentX += layout.totalWidth * scale;
       });
     }
 
     // 0. Draw Measure Numbers (Layer 0)
-    iterateBlocks((block, currentX) => {
+    iterateBlocks((block, getX, getWidth) => {
       if (block.measureNums) {
         const line = block.measureNums;
-        // Format: | 1 | 2
-        // We need to align chars
         for (let i = 0; i < line.length; i++) {
           const char = line[i];
           if (/\d/.test(char)) {
-            // Find full number
             let num = char;
             let k = i + 1;
             while (k < line.length && /\d/.test(line[k])) {
               num += line[k];
               k++;
             }
-
-            const x = currentX + i * fretWidth;
+            const x = getX(i);
             ctx.fillStyle = "#aaa";
             ctx.font = "bold 16px Arial";
             ctx.textAlign = "center";
             ctx.fillText(num, x, TOP_MARGIN - 50);
-
-            // Skip processed digits
             i = k - 1;
           } else if (char === "|") {
-            const x = currentX + i * fretWidth;
+            const x = getX(i);
             ctx.strokeStyle = "#444";
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -960,18 +996,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // 1. Draw Grid (Strings & Vertical Lines) (Layer 1)
-
-    // Vertical Lines (Default grid if no measure bars)
-    iterateBlocks((block, currentX) => {
+    iterateBlocks((block, getX, getWidth) => {
       const blockLength = block.strings[0].length;
       for (let i = 0; i < blockLength; i++) {
-        // Only draw faint grid if not a measure bar
-        // We check if there is a measure bar at this index in strings
         let isMeasureBar = false;
         if (block.strings[0][i] === "|") isMeasureBar = true;
 
         if (!isMeasureBar && i % 4 === 0) {
-          const x = currentX + i * fretWidth;
+          const x = getX(i);
           ctx.strokeStyle = "#222";
           ctx.lineWidth = 1;
           ctx.beginPath();
@@ -983,24 +1015,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // Draw PM Lines (Layer 1.5)
-    iterateBlocks((block, currentX) => {
+    iterateBlocks((block, getX, getWidth) => {
       if (block.pm) {
         const pmLine = block.pm;
-        // PM----|
         let inPM = false;
         let startIdx = -1;
 
         for (let i = 0; i < pmLine.length; i++) {
           const char = pmLine[i];
-
           if ((char === "P" || char === "M" || char === "-") && !inPM) {
             inPM = true;
             startIdx = i;
           } else if (char === "|" && inPM) {
             inPM = false;
-            // Draw PM line
-            const startX = currentX + startIdx * fretWidth;
-            const endX = currentX + i * fretWidth;
+            const startX = getX(startIdx);
+            const endX = getX(i);
 
             ctx.strokeStyle = "#888";
             ctx.lineWidth = 2;
@@ -1011,7 +1040,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Draw vertical end
             ctx.beginPath();
             ctx.moveTo(endX, TOP_MARGIN - 20);
             ctx.lineTo(endX, TOP_MARGIN - 10);
@@ -1022,10 +1050,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             ctx.textAlign = "left";
             ctx.fillText("P.M.", startX, TOP_MARGIN - 25);
           } else if (char === " " && inPM) {
-            // End of PM without bar?
             inPM = false;
-            const startX = currentX + startIdx * fretWidth;
-            const endX = currentX + i * fretWidth;
+            const startX = getX(startIdx);
+            const endX = getX(i);
 
             ctx.strokeStyle = "#888";
             ctx.lineWidth = 2;
@@ -1059,13 +1086,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (isFirstChunk) {
         ctx.fillStyle = stringColors[s];
         ctx.font = "bold 20px Arial";
-        ctx.textAlign = "left"; // Reset alignment
+        ctx.textAlign = "left";
         ctx.fillText(stringNames[s], 10, y + 7);
       }
     }
 
     // Draw Rhythm / Time Figures (Layer 4 - Bottom)
-    iterateBlocks((block, currentX) => {
+    iterateBlocks((block, getX, getWidth) => {
       const bottomY = TOP_MARGIN + 5 * STRING_SPACING + 40;
       const middleY = TOP_MARGIN + 2.5 * STRING_SPACING;
 
@@ -1073,7 +1100,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         const line = block.rhythmStems;
         for (let i = 0; i < line.length; i++) {
           const ch = line[i];
-          const x = currentX + i * fretWidth;
+          const x = getX(i);
+          const w = getWidth(i);
 
           // Detectar silencio por 'z' en las cuerdas
           let isRest = false;
@@ -1088,7 +1116,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (ch.toLowerCase() === 'r') isRest = true;
 
           if (ch === "|") {
-            // pequeña barra separadora bajo la tablatura
             ctx.strokeStyle = "#666";
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -1096,12 +1123,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             ctx.lineTo(x, bottomY + 20);
             ctx.stroke();
           } else if (ch !== " ") {
-            // Si es silencio, lo dibujamos en medio (middleY)
-            // Si es nota, abajo (bottomY)
             if (isRest) {
-                drawRhythmSymbol(ctx, ch, x, middleY, fretWidth, true);
+                drawRhythmSymbol(ctx, ch, x, middleY, w, true);
             } else {
-                drawRhythmSymbol(ctx, ch, x, bottomY, fretWidth, false);
+                drawRhythmSymbol(ctx, ch, x, bottomY, w, false);
             }
           }
         }
@@ -1110,123 +1135,109 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // 2. Draw Chord Blocks (Layer 2)
     if (showChords) {
-    iterateBlocks((block, currentX) => {
-      if (block.chords) {
-        const chordLine = block.chords;
-        // Regex to find chords OR the repetition marker '*'
-        const chordRegex = /([A-Za-z0-9#]+|\*)/g;
-        let match;
-        let lastChordName = "";
+      iterateBlocks((block, getX, getWidth) => {
+        if (block.chords) {
+          const chordLine = block.chords;
+          const chordRegex = /([A-Za-z0-9#]+|\*)/g;
+          let match;
+          let lastChordName = "";
 
-        while ((match = chordRegex.exec(chordLine)) !== null) {
-          if (match.index < 2) continue;
+          while ((match = chordRegex.exec(chordLine)) !== null) {
+            if (match.index < 2) continue;
 
-          const charIndex = match.index;
-          let chordName = match[0];
+            const charIndex = match.index;
+            let chordName = match[0];
 
-          // Handle repetition marker
-          if (chordName === "*") {
-            if (lastChordName) {
-              chordName = lastChordName;
-            } else {
-              continue; 
-            }
-          } else {
-            lastChordName = chordName;
-          }
-
-          const x = currentX + charIndex * fretWidth;
-
-          let minString = 5;
-          let maxString = 0;
-          let hasNotes = false;
-
-          for (let s = 0; s < 6; s++) {
-            if (s < block.strings.length) {
-              const char = block.strings[s][charIndex];
-              if (!isNaN(parseInt(char))) {
-                if (s < minString) minString = s;
-                if (s > maxString) maxString = s;
-                hasNotes = true;
+            if (chordName === "*") {
+              if (lastChordName) {
+                chordName = lastChordName;
+              } else {
+                continue;
               }
+            } else {
+              lastChordName = chordName;
             }
-          }
 
-          if (!hasNotes) {
-            minString = 0;
-            maxString = 5;
-          }
+            const x = getX(charIndex);
 
-          const blockTop = TOP_MARGIN + minString * STRING_SPACING - 20;
-          const blockBottom = TOP_MARGIN + maxString * STRING_SPACING + 20;
-          const blockHeight = blockBottom - blockTop;
+            let minString = 5;
+            let maxString = 0;
+            let hasNotes = false;
 
-          const gradient = ctx.createLinearGradient(
-            x,
-            blockTop,
-            x,
-            blockBottom
-          );
-          gradient.addColorStop(0, "#3b82f6");
-          gradient.addColorStop(1, "#1d4ed8");
-          ctx.fillStyle = gradient;
-
-          ctx.beginPath();
-          const w = Math.max(50, ctx.measureText(chordName).width + 30);
-
-          ctx.roundRect(x - 15, blockTop, w, blockHeight, 10);
-          ctx.fill();
-
-          ctx.strokeStyle = "#60a5fa";
-          ctx.lineWidth = 2;
-          ctx.stroke();
-
-          ctx.fillStyle = "#fff";
-          ctx.font = "bold 24px Arial";
-          ctx.textAlign = "center";
-          ctx.shadowColor = "rgba(0,0,0,0.5)";
-          ctx.shadowBlur = 4;
-          ctx.fillText(
-            chordName,
-            x + w / 2 - 15,
-            blockTop + blockHeight / 2 + 8
-          );
-          ctx.shadowBlur = 0;
-
-          if (interactiveRegions) {
-            let frets = [];
-            // Collect frets for tooltip (High e to Low E)
             for (let s = 0; s < 6; s++) {
-              // Collect frets for tooltip (Low E to High e)
-              // for (let s = 5; s >= 0; s--) {
               if (s < block.strings.length) {
                 const char = block.strings[s][charIndex];
-                if (/[0-9]/.test(char)) {
-                  frets.push(char);
-                } else if (/[xX]/.test(char)) {
-                  frets.push("x");
-                } else {
-                  frets.push("x"); // Treat '-' or space as muted/not played
+                if (!isNaN(parseInt(char))) {
+                  if (s < minString) minString = s;
+                  if (s > maxString) maxString = s;
+                  hasNotes = true;
                 }
-              } else {
-                frets.push("x");
               }
             }
-            interactiveRegions.push({
-              x: x - 15,
-              y: blockTop,
-              w: w,
-              h: blockHeight,
-              tooltip: frets.join("-"),
-            });
+
+            if (!hasNotes) {
+              minString = 0;
+              maxString = 5;
+            }
+
+            const blockTop = TOP_MARGIN + minString * STRING_SPACING - 20;
+            const blockBottom = TOP_MARGIN + maxString * STRING_SPACING + 20;
+            const blockHeight = blockBottom - blockTop;
+
+            const gradient = ctx.createLinearGradient(x, blockTop, x, blockBottom);
+            gradient.addColorStop(0, "#3b82f6");
+            gradient.addColorStop(1, "#1d4ed8");
+            ctx.fillStyle = gradient;
+
+            ctx.beginPath();
+            const w = Math.max(50, ctx.measureText(chordName).width + 30);
+
+            ctx.roundRect(x - 15, blockTop, w, blockHeight, 10);
+            ctx.fill();
+
+            ctx.strokeStyle = "#60a5fa";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 24px Arial";
+            ctx.textAlign = "center";
+            ctx.shadowColor = "rgba(0,0,0,0.5)";
+            ctx.shadowBlur = 4;
+            ctx.fillText(chordName, x + w / 2 - 15, blockTop + blockHeight / 2 + 8);
+            ctx.shadowBlur = 0;
+
+            if (interactiveRegions) {
+              let frets = [];
+              for (let s = 0; s < 6; s++) {
+                if (s < block.strings.length) {
+                  const char = block.strings[s][charIndex];
+                  if (/[0-9]/.test(char)) {
+                    frets.push(char);
+                  } else if (/[xX]/.test(char)) {
+                    frets.push("x");
+                  } else {
+                    frets.push("x");
+                  }
+                } else {
+                  frets.push("x");
+                }
+              }
+              interactiveRegions.push({
+                x: x - 15,
+                y: blockTop,
+                w: w,
+                h: blockHeight,
+                tooltip: frets.join("-"),
+              });
+            }
           }
         }
-      }
-    });
+      });
     }
 
     // 3. Draw Notes (Layer 3)
-    iterateBlocks((block, currentX) => {
+    iterateBlocks((block, getX, getWidth) => {
       const chordPositions = new Set();
       if (showChords && block.chords) {
         const chordRegex = /([A-Za-z0-9#]+|\*)/g;
@@ -1244,7 +1255,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         for (let i = 0; i < line.length; i++) {
           const char = line[i];
-          const x = currentX + i * fretWidth;
+          const x = getX(i);
+          const w = getWidth(i);
 
           if (!isNaN(parseInt(char))) {
             if (chordPositions.has(i)) {
@@ -1266,7 +1278,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             ctx.stroke();
             ctx.shadowBlur = 0;
           } else if (char.toLowerCase() === "h" || char.toLowerCase() === "p") {
-            // Find previous note index
             let prevIndex = -1;
             for (let k = i - 1; k >= 0; k--) {
               if (!isNaN(parseInt(line[k]))) {
@@ -1275,7 +1286,6 @@ document.addEventListener("DOMContentLoaded", async () => {
               }
             }
 
-            // Find next note index
             let nextIndex = -1;
             for (let k = i + 1; k < line.length; k++) {
               if (!isNaN(parseInt(line[k]))) {
@@ -1285,45 +1295,39 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
 
             if (prevIndex !== -1 && nextIndex !== -1) {
-              // Draw Arc (Slur)
               ctx.save();
               ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
               ctx.lineWidth = 2;
               ctx.setLineDash([4, 4]);
               ctx.beginPath();
 
-              const startX = currentX + prevIndex * fretWidth;
-              const endX = currentX + nextIndex * fretWidth;
+              const startX = getX(prevIndex);
+              const endX = getX(nextIndex);
               const midX = (startX + endX) / 2;
-              const noteRadius = 16; // Match the note circle radius
+              const noteRadius = 16;
 
-              // Start and end at the top of the note circle to avoid overlapping
               ctx.moveTo(startX, y - noteRadius);
+              const dist = Math.abs(nextIndex - prevIndex); // This is index dist, maybe use pixel dist?
+              // Pixel dist:
+              const pixelDist = Math.abs(endX - startX);
+              const curveHeight = 30 + pixelDist * 0.1; // Adjusted for pixel dist
 
-              // Curve higher if distance is large
-              const dist = Math.abs(nextIndex - prevIndex);
-              const curveHeight = 30 + dist * 5;
-
-              // Control point needs to be higher than the start/end
               ctx.quadraticCurveTo(midX, y - curveHeight, endX, y - noteRadius);
               ctx.stroke();
               ctx.restore();
 
-              // Label
               ctx.fillStyle = "#fff";
               ctx.font = "bold 14px Arial";
               ctx.textAlign = "center";
-              // Draw text slightly above the curve peak
               ctx.fillText(char.toUpperCase(), midX, y - curveHeight / 2 - 20);
             }
           } else if (char === "/") {
-            // Slide
             ctx.save();
             ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(x - fretWidth / 2, y + 10);
-            ctx.lineTo(x + fretWidth / 2, y - 10);
+            ctx.moveTo(x - w / 2, y + 10);
+            ctx.lineTo(x + w / 2, y - 10);
             ctx.stroke();
             ctx.restore();
           }
