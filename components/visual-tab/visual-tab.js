@@ -346,6 +346,13 @@ async function renderVisualTab() {
       title: songMeta.title,
     });
 
+    try {
+      localStorage.setItem("portal_lastRemoteArtist", entry.artist || "");
+      localStorage.setItem("portal_lastRemoteTitle", entry.title || "");
+    } catch (e) {
+      console.warn("Could not persist remote metadata", e);
+    }
+
     // Buscar si ya existe en tabsData
     let tab = tabsData.find((t) => t.id === `remote:${entry.id}`);
     if (!tab) {
@@ -443,6 +450,20 @@ async function renderVisualTab() {
         timeSig = line.split(":")[1].trim();
       }
     });
+
+    // Si hay metadatos recientes en localStorage (selección de Songsterr), priorizarlos
+    try {
+      const storedArtist = localStorage.getItem("portal_lastRemoteArtist");
+      const storedTitle = localStorage.getItem("portal_lastRemoteTitle");
+      if (storedArtist) artist = storedArtist;
+      if (storedTitle) song = storedTitle;
+      if (storedArtist || storedTitle) {
+        localStorage.removeItem("portal_lastRemoteArtist");
+        localStorage.removeItem("portal_lastRemoteTitle");
+      }
+    } catch (e) {
+      console.warn("Could not read remote metadata from storage", e);
+    }
     return { song, artist, bpm, timeSig };
   }
 
