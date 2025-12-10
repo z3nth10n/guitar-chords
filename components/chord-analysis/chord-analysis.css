@@ -282,7 +282,7 @@ input:focus {
   padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.4);
-  background: rgba(15, 23, 42, 0.7);
+  background: var(--status-chip-bg);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -303,7 +303,7 @@ input:focus {
 }
 
 .status-dot.idle {
-  background: #4b5563;
+  background: var(--status-dot-idle);
 }
 
 #toggleButton {
@@ -361,10 +361,10 @@ input:focus {
   border: 1px solid var(--border);
   background: radial-gradient(
       circle at top left,
-      rgba(148, 163, 184, 0.18),
+      var(--panel-bg-gradient),
       transparent 55%
     ),
-    rgba(15, 23, 42, 0.9);
+    var(--panel-bg);
   padding: 14px 14px 10px;
 }
 
@@ -401,7 +401,7 @@ input:focus {
 .result-card {
   border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(15, 23, 42, 0.9);
+  background: var(--panel-bg);
   padding: 10px 11px 8px;
 }
 
@@ -431,10 +431,10 @@ input:focus {
   margin-top: 12px;
   background: radial-gradient(
     circle at center,
-    rgba(31, 41, 55, 0.8),
-    rgba(15, 23, 42, 0.98)
+    var(--waveCanvas-bg-gradient1),
+    var(--waveCanvas-bg-gradient2)
   );
-  border: 1px solid rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--waveCanvas-border);
 }
 
 .hint strong {
