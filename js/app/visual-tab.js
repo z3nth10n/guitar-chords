@@ -804,13 +804,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     ctx.restore();
   }
 
-  function renderChunk(blocks, interactiveRegions = null) {
+  function renderChunk(blocks, interactiveRegions = null, chunkIndex = 0) {
     // console.log("renderChunk blocks:", blocks);
+
+    const isFirstChunk = chunkIndex === 0;
 
     const BASE_FRET_WIDTH = 40;
     const STRING_SPACING = 40;
     const TOP_MARGIN = 100; // Increased for measure numbers
-    const LEFT_MARGIN = 60;
+    const LEFT_MARGIN = isFirstChunk ? 60 : 20;
     const MAX_CANVAS_WIDTH = 10000;
 
     if (!blocks || !blocks.length) {
@@ -1017,10 +1019,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       ctx.lineTo(width, y);
       ctx.stroke();
 
-      ctx.fillStyle = stringColors[s];
-      ctx.font = "bold 20px Arial";
-      ctx.textAlign = "left"; // Reset alignment
-      ctx.fillText(stringNames[s], 10, y + 7);
+      if (isFirstChunk) {
+        ctx.fillStyle = stringColors[s];
+        ctx.font = "bold 20px Arial";
+        ctx.textAlign = "left"; // Reset alignment
+        ctx.fillText(stringNames[s], 10, y + 7);
+      }
     }
 
     // Draw Rhythm / Time Figures (Layer 4 - Bottom)
@@ -1336,7 +1340,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             ctx = info.canvas.getContext("2d");
             // console.log("Rendering chunk", idx, "into canvas", info.canvas);
             info.interactiveRegions = [];
-            renderChunk(info.blocks, info.interactiveRegions);
+            renderChunk(info.blocks, info.interactiveRegions, idx);
             info.rendered = true;
           } else if (!entry.isIntersecting && info.rendered) {
             // El chunk sale de la vista -> LO DESCARGAMOS
