@@ -1302,9 +1302,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           const w = getWidth(i);
 
           if (!isNaN(parseInt(char))) {
-            // if (chordPositions.has(i)) {
-            //   continue;
-            // }
+            if (chordPositions.has(i)) {
+              continue;
+            }
 
             ctx.fillStyle = stringColors[s];
             ctx.beginPath();
