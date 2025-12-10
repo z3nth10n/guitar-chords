@@ -950,7 +950,7 @@ async function renderVisualTab() {
     const isFirstChunk = chunkIndex === 0;
 
     const BASE_FRET_WIDTH = 40;
-    const COMPACT_FRET_WIDTH = 1; // Ancho reducido para compases vacíos
+    const COMPACT_FRET_WIDTH = 0; // Ancho reducido para compases vacíos
     const STRING_SPACING = 40;
     const TOP_MARGIN = 100; // Increased for measure numbers
     const LEFT_MARGIN = isFirstChunk ? 60 : 20;
@@ -1013,7 +1013,7 @@ async function renderVisualTab() {
         const isBar = block.strings[0][i] === "|";
 
         if (isBar) {
-          w = 4; // sin espacio extra en los compases
+          w = 0; // sin avance en barras de compás
         } else if (rhythmChar && rhythmChar !== "|") {
           if (rhythmChar.trim() === "") {
             w = COMPACT_FRET_WIDTH; // sin figura: espaciado mínimo
@@ -1116,17 +1116,18 @@ async function renderVisualTab() {
       const blockLength = block.strings[0].length;
       for (let i = 0; i < blockLength; i++) {
         let isMeasureBar = false;
-        if (block.strings[0][i] === "|") isMeasureBar = true;
+        if (block.strings[0][i] === "|") 
+          isMeasureBar = true;
 
-        if (!isMeasureBar && i % 4 === 0) {
-          const x = getX(i);
-          ctx.strokeStyle = "#222";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(x, TOP_MARGIN);
-          ctx.lineTo(x, TOP_MARGIN + 5 * STRING_SPACING);
-          ctx.stroke();
-        }
+        // if (!isMeasureBar && i % 4 === 0) {
+        //   const x = getX(i);
+        //   ctx.strokeStyle = "#222";
+        //   ctx.lineWidth = 1;
+        //   ctx.beginPath();
+        //   ctx.moveTo(x, TOP_MARGIN);
+        //   ctx.lineTo(x, TOP_MARGIN + 5 * STRING_SPACING);
+        //   ctx.stroke();
+        // }
       }
     });
 
