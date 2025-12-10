@@ -693,6 +693,117 @@ document.addEventListener("DOMContentLoaded", async () => {
     return chunks;
   }
 
+  // Mapa de figuras rítmicas según los códigos de rhythmStems
+  // Ajusta aquí si en json2tab usas otros caracteres.
+  const RHYTHM_GLYPHS = {
+    // w: redonda (por si algún día la usas)
+    w: { type: "note", filled: false, stem: false, flags: 0 },
+
+    // h/b: blanca (dos opciones por si usas 'h' o 'b')
+    h: { type: "note", filled: false, stem: true, flags: 0 },
+    b: { type: "note", filled: false, stem: true, flags: 0 },
+
+    // n: negra
+    n: { type: "note", filled: true, stem: true, flags: 0 },
+
+    // c: corchea
+    c: { type: "note", filled: true, stem: true, flags: 1 },
+
+    // s: semicorchea
+    s: { type: "note", filled: true, stem: true, flags: 2 },
+
+    // t: fusa (por si acaso)
+    t: { type: "note", filled: true, stem: true, flags: 3 },
+
+    // r: silencio (usamos un símbolo genérico de silencio de negra)
+    r: { type: "rest" },
+  };
+
+  function drawRhythmSymbol(ctx, ch, x, baselineY, fretWidth) {
+    const code = ch.toLowerCase();
+    const shape = RHYTHM_GLYPHS[code];
+    if (!shape) return;
+
+    ctx.save();
+    ctx.strokeStyle = "#ddd";
+    ctx.fillStyle = "#ddd";
+    ctx.lineWidth = 2;
+
+    // Silencios
+    if (shape.type === "rest") {
+      // Silencio tipo negra, estilizado
+      const x0 = x;
+      const y0 = baselineY - 18;
+      ctx.beginPath();
+      ctx.moveTo(x0 - 4, y0);
+      ctx.lineTo(x0 + 3, y0 + 6);
+      ctx.lineTo(x0 - 3, y0 + 12);
+      ctx.lineTo(x0 + 4, y0 + 18);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(x0 + 4, y0 + 21, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+      return;
+    }
+
+    // Notas
+    const headWidth = Math.min(fretWidth * 0.5, 12);
+    const headHeight = headWidth * 0.7;
+    const headY = baselineY - 5;
+
+    // Cabeza de la nota (ovalada)
+    ctx.save();
+    ctx.translate(x, headY);
+    ctx.rotate(-Math.PI / 6);
+    ctx.beginPath();
+    ctx.ellipse(
+      0,
+      0,
+      headWidth / 2,
+      headHeight / 2,
+      0,
+      0,
+      Math.PI * 2
+    );
+    if (shape.filled) {
+      ctx.fill();
+    } else {
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Plica
+    if (shape.stem) {
+      const stemX = x + headWidth / 2 - 1;
+      const stemTopY = headY - 22;
+
+      ctx.beginPath();
+      ctx.moveTo(stemX, headY);
+      ctx.lineTo(stemX, stemTopY);
+      ctx.stroke();
+
+      // Banderines (una corchea = 1, semicorchea = 2, etc.)
+      const flags = shape.flags || 0;
+      for (let i = 0; i < flags; i++) {
+        const fy = stemTopY + i * 6;
+        ctx.beginPath();
+        ctx.moveTo(stemX, fy);
+        ctx.quadraticCurveTo(
+          stemX + 8,
+          fy + 2,
+          stemX,
+          fy + 8
+        );
+        ctx.stroke();
+      }
+    }
+
+    ctx.restore();
+  }
+
   function renderChunk(blocks, interactiveRegions = null) {
     // console.log("renderChunk blocks:", blocks);
 
@@ -923,7 +1034,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           const x = currentX + i * fretWidth;
 
           if (ch === "|") {
-            // pequeña barra separadora bajo el pentagrama
+            // pequeña barra separadora bajo la tablatura
             ctx.strokeStyle = "#666";
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -931,11 +1042,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             ctx.lineTo(x, bottomY + 20);
             ctx.stroke();
           } else if (ch !== " ") {
-            // símbolo de la figura (n, c, s, b, h, r, etc.)
-            ctx.fillStyle = "#bbb";
-            ctx.font = "bold 14px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText(ch, x, bottomY);
+            // dibujar la figura musical en lugar de la letra
+            drawRhythmSymbol(ctx, ch, x, bottomY, fretWidth);
           }
         }
       }
