@@ -998,6 +998,22 @@ async function renderVisualTab() {
           return;
         }
 
+        if (
+          block.rhythmStems &&
+          measureHasRhythmSymbols(block.rhythmStems, range.start, range.end)
+        ) {
+          cursor = processMeasureWithRhythm({
+            block,
+            start: range.start,
+            end: range.end,
+            cursor,
+            secondsPerQuarter,
+            secondsPerMeasure,
+            events,
+          });
+          return;
+        }
+
         const defaultDuration = secondsPerMeasure / columnIndices.length;
 
         columnIndices.forEach((colIndex) => {
@@ -1049,6 +1065,62 @@ async function renderVisualTab() {
     const code = symbol.toLowerCase();
     if (!NOTE_DURATION_QUARTERS[code]) return null;
     return NOTE_DURATION_QUARTERS[code] * secondsPerQuarter;
+  }
+
+  function measureHasRhythmSymbols(line, start, end) {
+    if (!line) return false;
+    for (let i = start; i < end && i < line.length; i++) {
+      const char = line[i];
+      if (!char || char === "|" || char.trim() === "") continue;
+      if (NOTE_DURATION_QUARTERS[char.toLowerCase()]) return true;
+    }
+    return false;
+  }
+
+  function processMeasureWithRhythm({
+    block,
+    start,
+    end,
+    cursor,
+    secondsPerQuarter,
+    secondsPerMeasure,
+    events,
+  }) {
+    const measureStart = cursor;
+    const fallbackStep = secondsPerQuarter / 4;
+
+    for (let i = start; i < end; i++) {
+      if (block.strings[0][i] === "|") continue;
+      const symbol = block.rhythmStems[i];
+      if (!symbol || symbol === "|" || symbol.trim() === "") continue;
+
+      const lower = symbol.toLowerCase();
+      const units = NOTE_DURATION_QUARTERS[lower];
+      let duration = units ? units * secondsPerQuarter : fallbackStep;
+      if (!duration || !isFinite(duration)) {
+        duration = fallbackStep;
+      }
+      const sustain = Math.max(duration * 0.92, 0.25);
+
+      if (lower !== "r") {
+        const midis = collectColumnMidis(block, i);
+        if (midis.length) {
+          events.push({
+            start: cursor,
+            duration: sustain,
+            midis,
+          });
+        }
+      }
+
+      cursor += duration;
+    }
+
+    const consumed = cursor - measureStart;
+    if (secondsPerMeasure - consumed > 0.01) {
+      cursor = measureStart + secondsPerMeasure;
+    }
+    return cursor;
   }
 
   function collectColumnMidis(block, index) {
