@@ -119,8 +119,11 @@ async function renderVisualTab() {
       // Re-render if a tab is active
       if (currentTab && currentTab.content) {
         const parsedData = parseTabContent(currentTab.content);
-        currentBlocks = parsedData;
-        renderVisualTab(parsedData);
+        currentBlocks = parsedData.blocks;
+        if (parsedData.stringTunings) {
+          currentTab.stringTunings = parsedData.stringTunings;
+        }
+        renderVisualTab(parsedData.blocks);
       }
     });
   }
@@ -930,12 +933,13 @@ async function renderVisualTab() {
     }
 
     const parsedData = parseTabContent(tab.content);
-    currentBlocks = parsedData;
+    currentBlocks = parsedData.blocks;
+    currentTab.stringTunings = parsedData.stringTunings || null;
     if (playButton) {
       playButton.disabled = false;
       updatePlayButton();
     }
-    renderVisualTab(parsedData);
+    renderVisualTab(parsedData.blocks);
   }
 
   function parseTabContent(text) {
@@ -943,8 +947,8 @@ async function renderVisualTab() {
     const blocks = [];
     // Block structure: { strings: [], chords: null, pm: null, measureNums: null, rhythmStems: null, rhythmBeams: null }
 
-    // Regex for tab lines: e|-... or e -... or just starting with string name and |
-    const stringRegex = /^[eBGDAE]\|/;
+    // Regex for tab lines: e|-... or midi-coded s63|...
+    const stringRegex = /^(?:[eBGDAE]|s\d+)\|/i;
 
     let tempStrings = [];
     let tempChord = null;
@@ -952,10 +956,28 @@ async function renderVisualTab() {
     let tempMeasureNums = null;
     let tempRhythmStems = null;
     let tempRhythmBeams = null;
+    let foundStringSection = false;
+    const midiByStringIndex = [];
+    const headerMidiCandidates = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trimEnd(); // Keep leading spaces
-      if (stringRegex.test(line.trim())) {
+      const trimmed = line.trim();
+      if (!foundStringSection) {
+        const headerMatches = trimmed.match(/s(\d{2,3})/gi);
+        if (headerMatches) {
+          headerMatches.forEach((match) => {
+            if (headerMidiCandidates.length < 6) {
+              const value = parseInt(match.slice(1), 10);
+              if (!isNaN(value)) {
+                headerMidiCandidates.push(value);
+              }
+            }
+          });
+        }
+      }
+      if (stringRegex.test(trimmed)) {
+        foundStringSection = true;
         // If we already have 6 strings and find a new one, it's a new block
         if (tempStrings.length === 6) {
           if (!tempChord) {
@@ -977,6 +999,15 @@ async function renderVisualTab() {
           tempRhythmBeams = null;
         }
         tempStrings.push(line);
+        const midiVal = extractMidiFromStringLine(trimmed);
+        const currentIndex = tempStrings.length - 1;
+        if (
+          midiVal !== null &&
+          currentIndex >= 0 &&
+          midiByStringIndex[currentIndex] === undefined
+        ) {
+          midiByStringIndex[currentIndex] = midiVal;
+        }
       } else if (line.trim().startsWith("x|")) {
         tempChord = line;
       } else if (
@@ -1016,7 +1047,24 @@ async function renderVisualTab() {
       });
     }
 
-    return blocks;
+    let stringTunings = null;
+    if (midiByStringIndex.some((val) => typeof val === "number")) {
+      stringTunings = midiByStringIndex;
+    } else if (headerMidiCandidates.length >= 6) {
+      stringTunings = headerMidiCandidates.slice(0, 6);
+    }
+
+    return { blocks, stringTunings };
+  }
+
+  function extractMidiFromStringLine(line) {
+    if (!line) return null;
+    const match = line.match(/^s(\d{2,3})\|/i);
+    if (match) {
+      const value = parseInt(match[1], 10);
+      return isNaN(value) ? null : value;
+    }
+    return null;
   }
 
   // Number of measures per canvas
@@ -1436,19 +1484,53 @@ async function renderVisualTab() {
   function collectColumnMidis(block, index) {
     const notes = [];
     if (!block || !block.strings) return notes;
-    const maxStrings = Math.min(
-      block.strings.length,
-      STANDARD_TUNING_MIDI.length
-    );
+    const maxStrings = block.strings.length;
     for (let s = 0; s < maxStrings; s++) {
       const fretInfo = getFretAt(block.strings[s], index);
       if (fretInfo) {
         const fretValue = parseInt(fretInfo.value, 10);
         if (isNaN(fretValue)) continue;
-        notes.push(STANDARD_TUNING_MIDI[s] + fretValue);
+        const openMidi = getOpenStringMidi(s);
+        if (openMidi === null) continue;
+        notes.push(openMidi + fretValue);
       }
     }
     return notes;
+  }
+
+  function getOpenStringMidi(stringIndex) {
+    const tabTunings =
+      currentTab && Array.isArray(currentTab.stringTunings)
+        ? currentTab.stringTunings
+        : null;
+    if (
+      tabTunings &&
+      tabTunings[stringIndex] !== undefined &&
+      tabTunings[stringIndex] !== null
+    ) {
+      const value = parseInt(tabTunings[stringIndex], 10);
+      if (!isNaN(value)) {
+        return value;
+      }
+    }
+    if (STANDARD_TUNING_MIDI[stringIndex] !== undefined) {
+      return STANDARD_TUNING_MIDI[stringIndex];
+    }
+    return STANDARD_TUNING_MIDI[STANDARD_TUNING_MIDI.length - 1] || null;
+  }
+
+  function getStringLabel(index) {
+    if (
+      currentTab &&
+      Array.isArray(currentTab.stringTunings) &&
+      currentTab.stringTunings[index] !== undefined &&
+      currentTab.stringTunings[index] !== null
+    ) {
+      const midiValue = Number(currentTab.stringTunings[index]);
+      const label = midiToNoteLabel(midiValue);
+      if (label) return label;
+    }
+    return DEFAULT_STRING_NAMES[index] || `S${index + 1}`;
   }
 
   function lightenColor(hex, factor = 0.25) {
@@ -1722,7 +1804,6 @@ async function renderVisualTab() {
     ctx.fillStyle = "#111";
     ctx.fillRect(0, 0, width, height);
 
-    const stringNames = ["e", "B", "G", "D", "A", "E"];
     const stringColors = [
       "#ef4444",
       "#f97316",
@@ -1873,7 +1954,7 @@ async function renderVisualTab() {
         ctx.fillStyle = stringColors[s];
         ctx.font = "bold 20px Arial";
         ctx.textAlign = "left";
-        ctx.fillText(stringNames[s], 10, y + 7);
+        ctx.fillText(getStringLabel(s), 10, y + 7);
       }
     }
 
@@ -2380,6 +2461,13 @@ async function renderVisualTab() {
     "A#",
     "B",
   ];
+
+  function midiToNoteLabel(midi) {
+    if (typeof midi !== "number" || !isFinite(midi)) return null;
+    const note = NOTE_NAMES[midi % 12] || "";
+    const octave = Math.floor(midi / 12) - 1;
+    return `${note}${octave}`;
+  }
   const NOTE_NAMES_LATIN = [
     "Do",
     "Do#",
@@ -2396,6 +2484,7 @@ async function renderVisualTab() {
   ];
 
   const STANDARD_TUNING_MIDI = [64, 59, 55, 50, 45, 40]; // E4, B3, G3, D3, A2, E2
+  const DEFAULT_STRING_NAMES = ["e", "B", "G", "D", "A", "E"];
 
   const CHORD_PATTERNS = [
     { name: "Major", suffix: "", intervals: [0, 4, 7] },
@@ -2479,10 +2568,12 @@ async function renderVisualTab() {
       for (let s = 0; s < 6; s++) {
         if (s < block.strings.length) {
           const fretInfo = getFretAt(block.strings[s], i);
-          if (fretInfo) {
-            const openMidi = STANDARD_TUNING_MIDI[s];
-            notesMidi.push(openMidi + parseInt(fretInfo.value, 10));
-          }
+            if (fretInfo) {
+            const openMidi = getOpenStringMidi(s);
+            if (openMidi !== null) {
+              notesMidi.push(openMidi + parseInt(fretInfo.value, 10));
+            }
+            }
         }
       }
 
