@@ -33,6 +33,79 @@ const DEFAULT_TUNING_LOW_TO_HIGH = [...STANDARD_TUNING_HIGH_TO_LOW].reverse();
 const profileCaches = new Map();
 let sharedAudioCtx = null;
 
+const PROFILE_SETTINGS = {
+  default: {
+    outputGain: 0.5,
+    attack: 0.008,
+    decay: 0.08,
+    sustain: 0.75,
+    release: 0.55,
+    minDuration: 0.12,
+    lowpass: { frequency: 6500, Q: 0.7 },
+    highpass: { frequency: 110, Q: 0.7 },
+  },
+  "guitar-clean": {
+    outputGain: 0.58,
+    attack: 0.01,
+    decay: 0.1,
+    sustain: 0.78,
+    release: 0.95,
+    minDuration: 0.2,
+    lowpass: { frequency: 5200, Q: 0.6 },
+    highpass: { frequency: 120, Q: 0.6 },
+  },
+  "guitar-jazz": {
+    outputGain: 0.52,
+    attack: 0.012,
+    decay: 0.12,
+    sustain: 0.82,
+    release: 1,
+    minDuration: 0.22,
+    lowpass: { frequency: 4300, Q: 0.75 },
+    highpass: { frequency: 150, Q: 0.65 },
+  },
+  "guitar-dist1": {
+    outputGain: 0.42,
+    attack: 0.006,
+    decay: 0.08,
+    sustain: 0.88,
+    release: 0.65,
+    minDuration: 0.2,
+    highpass: { frequency: 180, Q: 0.9 },
+    lowpass: { frequency: 5200, Q: 0.8 },
+    distortion: { amount: 32, oversample: "4x" },
+    compressor: { threshold: -24, ratio: 6, attack: 0.003, release: 0.08 },
+  },
+  "guitar-dist2": {
+    outputGain: 0.4,
+    attack: 0.004,
+    decay: 0.07,
+    sustain: 0.92,
+    release: 0.7,
+    minDuration: 0.22,
+    highpass: { frequency: 220, Q: 0.9 },
+    lowpass: { frequency: 4800, Q: 0.7 },
+    distortion: { amount: 45, oversample: "4x" },
+    compressor: { threshold: -26, ratio: 8, attack: 0.002, release: 0.09 },
+  },
+};
+
+function getProfileSettings(profile) {
+  return PROFILE_SETTINGS[profile] || PROFILE_SETTINGS.default;
+}
+
+function createDistortionCurve(amount = 20, samples = 2048) {
+  const curve = new Float32Array(samples);
+  const deg = Math.PI / 180;
+  for (let i = 0; i < samples; ++i) {
+    const x = (i * 2) / samples - 1;
+    curve[i] =
+      ((3 + amount) * x * 20 * deg) /
+      (Math.PI + amount * Math.abs(x));
+  }
+  return curve;
+}
+
 function resolveSoundBaseUrl() {
   let base = "";
   if (document.currentScript) {
@@ -240,6 +313,21 @@ function createEngine(options = {}) {
   engine.scheduleMidiNote = function (midi, startTime, duration) {
     if (!midi && midi !== 0) return null;
     const ctx = getAudioContext();
+    const profileConfig = getProfileSettings(this.soundProfile);
+    const attack = profileConfig.attack ?? 0.008;
+    const decay = profileConfig.decay ?? 0.08;
+    const sustainLevel =
+      profileConfig.sustain !== undefined ? profileConfig.sustain : 0.75;
+    const release = profileConfig.release ?? 0.6;
+    const minDuration = profileConfig.minDuration ?? 0.12;
+    const noteHold = Math.max(duration, minDuration);
+    const releaseStart = startTime + noteHold;
+    const stopTime = releaseStart + release;
+    const outputGainValue =
+      profileConfig.outputGain !== undefined
+        ? profileConfig.outputGain
+        : this.gain;
+    const targetGain = outputGainValue;
     let nodeRecord;
 
     if (this.audioBuffers && Object.keys(this.audioBuffers).length) {
@@ -255,6 +343,17 @@ function createEngine(options = {}) {
         }
 
         let outputNode = source;
+
+        const applyFilter = (type, cfg) => {
+          if (!cfg) return;
+          const filter = ctx.createBiquadFilter();
+          filter.type = type;
+          if (cfg.frequency) filter.frequency.value = cfg.frequency;
+          if (cfg.Q) filter.Q.value = cfg.Q;
+          outputNode.connect(filter);
+          outputNode = filter;
+        };
+
         const formantShift = getTotalFormant(this.advanced);
         if (formantShift !== 0) {
           const filter = ctx.createBiquadFilter();
@@ -262,19 +361,55 @@ function createEngine(options = {}) {
           filter.Q.value = 1;
           filter.gain.value = 6;
           filter.frequency.value = 1000 * Math.pow(2, formantShift / 1200);
-          source.connect(filter);
+          outputNode.connect(filter);
           outputNode = filter;
         }
 
+        applyFilter("highpass", profileConfig.highpass);
+
+        if (profileConfig.distortion) {
+          const shaper = ctx.createWaveShaper();
+          shaper.curve = createDistortionCurve(
+            profileConfig.distortion.amount
+          );
+          shaper.oversample =
+            profileConfig.distortion.oversample || "2x";
+          outputNode.connect(shaper);
+          outputNode = shaper;
+        }
+
+        applyFilter("lowpass", profileConfig.lowpass);
+
+        if (profileConfig.compressor) {
+          const comp = ctx.createDynamicsCompressor();
+          const { threshold, ratio, attack: compAttack, release: compRelease } =
+            profileConfig.compressor;
+          if (threshold !== undefined) comp.threshold.value = threshold;
+          if (ratio !== undefined) comp.ratio.value = ratio;
+          if (compAttack !== undefined) comp.attack.value = compAttack;
+          if (compRelease !== undefined) comp.release.value = compRelease;
+          outputNode.connect(comp);
+          outputNode = comp;
+        }
+
         const gain = ctx.createGain();
-        gain.gain.value = this.gain;
         outputNode.connect(gain);
         gain.connect(ctx.destination);
 
-        const stopTime = startTime + duration;
-        gain.gain.setValueAtTime(this.gain, startTime);
-        gain.gain.setValueAtTime(this.gain, Math.max(startTime, stopTime - 0.2));
-        gain.gain.exponentialRampToValueAtTime(0.001, stopTime);
+        gain.gain.setValueAtTime(0.0001, Math.max(startTime - 0.01, 0));
+        gain.gain.linearRampToValueAtTime(
+          targetGain,
+          startTime + attack
+        );
+        gain.gain.linearRampToValueAtTime(
+          targetGain * sustainLevel,
+          startTime + attack + decay
+        );
+        gain.gain.setValueAtTime(
+          targetGain * sustainLevel,
+          releaseStart
+        );
+        gain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
 
         source.start(startTime);
         source.stop(stopTime + 0.05);
@@ -304,11 +439,22 @@ function createEngine(options = {}) {
     osc.frequency.value = frequency;
     osc.connect(gain);
     gain.connect(ctx.destination);
-    gain.gain.setValueAtTime(0, startTime);
-    gain.gain.linearRampToValueAtTime(this.gain * 0.4, startTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    gain.gain.setValueAtTime(0.0001, Math.max(startTime - 0.01, 0));
+    gain.gain.linearRampToValueAtTime(
+      targetGain * 0.8,
+      startTime + attack
+    );
+    gain.gain.linearRampToValueAtTime(
+      targetGain * sustainLevel * 0.8,
+      startTime + attack + decay
+    );
+    gain.gain.setValueAtTime(
+      targetGain * sustainLevel * 0.8,
+      releaseStart
+    );
+    gain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
     osc.start(startTime);
-    osc.stop(startTime + duration + 0.05);
+    osc.stop(stopTime + 0.05);
     nodeRecord = {
       stop: () => {
         try {
